@@ -237,7 +237,6 @@ typedef obj_t map_t;
 
 obj_t* map_lookup(map_t* map, obj_t* key) {
   while(!(is_nil(map))) {
-    puts("lookup");
     obj_t* item = cons_first(map);
     if(cons_first(item) == key) {
       return cons_rest(item);
@@ -290,7 +289,7 @@ obj_t* builtin_add(vm_t* vm, obj_t* args) {
 }
 
 bool is_self_evaluating(obj_t* o) {
-  return is_integer(o) || is_nil(o);
+  return is_integer(o) || is_nil(o) || is_builtin(o);
 }
 
 obj_t* eval(vm_t* vm, obj_t* o, map_t* env) {
@@ -304,6 +303,7 @@ obj_t* eval(vm_t* vm, obj_t* o, map_t* env) {
     return map_lookup(env, o);
   } else if(is_cons(o)) {
     obj_t* f = cons_first(o);
+    f = eval(vm, f, env);
     if(is_builtin(f)) {
       return builtin_func(f)(vm, cons_rest(o));
     } else {
@@ -376,8 +376,11 @@ obj_t* parse(vm_t* vm, const char* text) {
 
 void testParse() {
   vm_t* vm = make_vm(4096);
-  EXPECT_INT_EQ(integer_value(parse(vm, "1")), 1);
-  EXPECT_INT_EQ(integer_value(parse(vm, "42")), 42);
+
+  {
+    EXPECT_INT_EQ(integer_value(parse(vm, "1")), 1);
+    EXPECT_INT_EQ(integer_value(parse(vm, "42")), 42);
+  }
 
   {
     obj_t* res = parse(vm, "a");
@@ -397,8 +400,11 @@ void testParse() {
 
 void testEval() {
   vm_t* vm = make_vm(4096);
-  EXPECT_INT_EQ(integer_value(eval(vm, make_integer(vm, 1), 0)), 1);
-  EXPECT_INT_EQ(integer_value(eval(vm, make_integer(vm, 42), 0)), 42);
+
+  {
+    EXPECT_INT_EQ(integer_value(eval(vm, make_integer(vm, 1), 0)), 1);
+    EXPECT_INT_EQ(integer_value(eval(vm, make_integer(vm, 42), 0)), 42);
+  }
 
   {
     obj_t* add = vm->objs.builtin_add;
@@ -423,16 +429,38 @@ void testEval() {
     obj_t* one = make_integer(vm, 1);
     obj_t* two = make_integer(vm, 2);
 
-    obj_t* list = make_cons(vm, add, make_cons(vm, one, make_cons(vm, two, make_nil(vm))));
+    obj_t* list = make_cons(vm, plus, make_cons(vm, one, make_cons(vm, two, make_nil(vm))));
+
     obj_t* pair = make_cons(vm, plus, add);
     obj_t* env = make_cons(vm, pair, make_nil(vm));
     EXPECT_INT_EQ(integer_value(eval(vm, list, env)), 3);
   }
+  free_vm(vm);
+}
+
+void testParseAndEval() {
+  vm_t* vm = make_vm(4096);
+
+  {
+    obj_t* plus = make_symbol(vm, "+", 1);
+    obj_t* add = vm->objs.builtin_add;
+
+    obj_t* pair = make_cons(vm, plus, add);
+    obj_t* env = make_cons(vm, pair, make_nil(vm));
+
+    obj_t* input = parse(vm, "(+ 1 2)");
+    obj_t* res = eval(vm, input, env);
+
+    EXPECT_INT_EQ(integer_value(res), 3);
+  }
+
+  free_vm(vm);
 }
 
 void testAll() {
   testParse();
   testEval();
+  testParseAndEval();
 }
 
 int main(int argc, char** argv) {
