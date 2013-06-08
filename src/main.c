@@ -59,6 +59,7 @@ enum {
   OBJ_SYMBOL,
   OBJ_BUILTIN,
   OBJ_BOOL,
+  OBJ_LAMBDA
 };
 
 struct _vm_t;
@@ -87,6 +88,11 @@ typedef struct _obj_t {
     struct {
       bool value;
     } as_bool;
+    struct {
+      struct _obj_t* params;
+      struct _obj_t* body;
+      struct _obj_t* env;
+    } as_lambda;
   };
 } obj_t;
 
@@ -126,6 +132,7 @@ typedef struct _vm_t {
 
     obj_t* sym_if;
     obj_t* sym_plus;
+    obj_t* sym_lambda;
 
     obj_t* builtin_add;
   } objs;
@@ -154,6 +161,7 @@ vm_t* make_vm(size_t heap_block_size) {
 
   vm->objs.sym_if = make_symbol(vm, "if", 2);
   vm->objs.sym_plus = make_symbol(vm, "+", 1);
+  vm->objs.sym_lambda = make_symbol(vm, "lambda", 6);
 
   vm->objs.builtin_add = make_builtin(vm, builtin_add);
   return vm;
@@ -337,6 +345,33 @@ obj_t* make_bool(vm_t* vm, bool value) {
   return o;
 }
 
+bool is_lambda(obj_t* o) {
+  return o->flags == OBJ_LAMBDA;
+}
+
+obj_t* lambda_params(obj_t* o) {
+  EXPECT(is_lambda(o));
+  return o->as_lambda.params;
+}
+
+obj_t* lambda_body(obj_t* o) {
+  EXPECT(is_lambda(o));
+  return o->as_lambda.body;
+}
+
+obj_t* lambda_env(obj_t* o) {
+  EXPECT(is_lambda(o));
+  return o->as_lambda.env;
+}
+
+obj_t* make_lambda(vm_t* vm, obj_t* params, obj_t* body, obj_t* env) {
+  obj_t* o = make_obj(vm, OBJ_LAMBDA);
+  o->as_lambda.params = params;
+  o->as_lambda.body = body;
+  o->as_lambda.env = env;
+  return o;
+}
+
 bool obj_equal(obj_t* a, obj_t* b) {
   if(a->flags != b->flags) {
     return false;
@@ -381,6 +416,7 @@ void print_list(obj_t* value) {
   default:
     printf(" . ");
     print_value(value);
+    printf(")");
     return;
   }
 }
@@ -402,7 +438,7 @@ void print_value(obj_t* value) {
     printf("%d", integer_value(value));
     return;
   case OBJ_SYMBOL:
-    printf("\"%s\"", symbol_name(value));
+    printf("%s", symbol_name(value));
     return;
   case OBJ_BUILTIN:
     printf("<builtin@%p>", builtin_func(value));
@@ -410,6 +446,8 @@ void print_value(obj_t* value) {
   case OBJ_BOOL:
     printf("%s", bool_value(value) ? "#t" : "#f");
     return;
+  case OBJ_LAMBDA:
+    printf("<lambda@%p>", value);
   default:
     EXPECT(0);
     return;
@@ -435,11 +473,40 @@ bool is_self_evaluating(obj_t* o) {
   return is_integer(o) || is_nil(o) || is_builtin(o) || is_bool(o);
 }
 
+obj_t* extend_env(vm_t* vm, obj_t* params, obj_t* args, obj_t* env) {
+  if(is_nil(params)) {
+    EXPECT(is_nil(args));
+    return env;
+  } else {
+    obj_t* key = cons_first(params);
+    EXPECT(is_symbol(key));
+    obj_t* value = cons_first(args);
+    return extend_env(vm,
+      cons_rest(params),
+      cons_rest(args),
+      make_cons(vm, make_cons(vm, key, value), env));
+  }
+}
+
+obj_t* eval(vm_t* vm, obj_t* o, map_t* env);
+obj_t* eval_list(vm_t* vm, obj_t* o, map_t* env) {
+  if(is_cons(o)) {
+    return make_cons(vm, eval(vm, cons_first(o), env), eval_list(vm, cons_rest(o), env));
+  } else {
+    return eval(vm, o, env);
+  }
+}
+
 obj_t* eval(vm_t* vm, obj_t* o, map_t* env) {
   // obj_t* procedure;
   // obj_t* arguments;
   // obj_t* result;
   while(true) {
+    printf("eval ");
+    obj_print(o);
+    printf("env: ");
+    obj_print(env);
+
     if(is_self_evaluating(o)) {
       return o;
     } else if(is_symbol(o)) {
@@ -456,10 +523,19 @@ obj_t* eval(vm_t* vm, obj_t* o, map_t* env) {
         } else {
           o = cons_first(cons_rest(cons_rest(o)));
         }
+      } else if(f == vm->objs.sym_lambda) {
+        obj_t* params = cons_first(o);
+        obj_t* body = cons_first(cons_rest(o));
+        return make_lambda(vm, params, body, env);
       } else {
         f = eval(vm, f, env);
         if(is_builtin(f)) {
-          return builtin_func(f)(vm, o);
+          obj_t* params = eval_list(vm, o, env);
+          return builtin_func(f)(vm, params);
+        } else if(is_lambda(f)) {
+          obj_t* params = eval_list(vm, o, env);
+          env = extend_env(vm, lambda_params(f), params, env);
+          o = lambda_body(f);
         } else {
           EXPECT(0);
           return 0;
@@ -609,8 +685,8 @@ void testEval() {
   vm_t* vm = make_vm(4096);
 
   {
-    EXPECT_INT_EQ(integer_value(eval(vm, make_integer(vm, 1), 0)), 1);
-    EXPECT_INT_EQ(integer_value(eval(vm, make_integer(vm, 42), 0)), 42);
+    EXPECT_INT_EQ(integer_value(eval(vm, make_integer(vm, 1), vm->objs.nil)), 1);
+    EXPECT_INT_EQ(integer_value(eval(vm, make_integer(vm, 42), vm->objs.nil)), 42);
   }
 
   {
@@ -620,7 +696,7 @@ void testEval() {
 
     obj_t* list = make_list(vm, add, one, two, 0);
 
-    EXPECT_INT_EQ(integer_value(eval(vm, list, 0)), 3);
+    EXPECT_INT_EQ(integer_value(eval(vm, list, vm->objs.nil)), 3);
   }
 
   {
@@ -651,7 +727,7 @@ void testEval() {
     obj_t* two = make_integer(vm, 2);
 
     obj_t* list = make_list(vm, _if, _true, one, two, 0);
-    EXPECT_INT_EQ(integer_value(eval(vm, list, 0)), 1);
+    EXPECT_INT_EQ(integer_value(eval(vm, list, vm->objs.nil)), 1);
   }
 
   {
@@ -661,7 +737,7 @@ void testEval() {
     obj_t* two = make_integer(vm, 2);
 
     obj_t* list = make_list(vm, _if, _false, one, two, 0);
-    EXPECT_INT_EQ(integer_value(eval(vm, list, 0)), 2);
+    EXPECT_INT_EQ(integer_value(eval(vm, list, vm->objs.nil)), 2);
   }
 
   free_vm(vm);
@@ -678,6 +754,19 @@ void testParseAndEval() {
     obj_t* env = make_cons(vm, pair, make_nil(vm));
 
     obj_t* input = parse(vm, "(+ 1 2)");
+    obj_t* res = eval(vm, input, env);
+
+    EXPECT_INT_EQ(integer_value(res), 3);
+  }
+
+  {
+    obj_t* plus = vm->objs.sym_plus;
+    obj_t* add = vm->objs.builtin_add;
+
+    obj_t* pair = make_cons(vm, plus, add);
+    obj_t* env = make_cons(vm, pair, make_nil(vm));
+
+    obj_t* input = parse(vm, "((lambda (x y) (+ x y)) 1 2)");
     obj_t* res = eval(vm, input, env);
 
     EXPECT_INT_EQ(integer_value(res), 3);
