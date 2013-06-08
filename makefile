@@ -10,7 +10,7 @@ executable = build/mylisp
 
 test: $(executable)
 	echo "running tests"
-	${<}
+	${<} --test
 
 cloc: $(wildcard src/*.c) $(wildcard src/*.h)
 	printf "lines of c: "

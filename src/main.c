@@ -133,6 +133,8 @@ typedef struct _vm_t {
     obj_t* sym_if;
     obj_t* sym_plus;
     obj_t* sym_lambda;
+    obj_t* sym_import;
+    obj_t* sym_core;
 
     obj_t* builtin_add;
   } objs;
@@ -162,6 +164,8 @@ vm_t* make_vm(size_t heap_block_size) {
   vm->objs.sym_if = make_symbol(vm, "if", 2);
   vm->objs.sym_plus = make_symbol(vm, "+", 1);
   vm->objs.sym_lambda = make_symbol(vm, "lambda", 6);
+  vm->objs.sym_import = make_symbol(vm, "import", 6);
+  vm->objs.sym_core = make_symbol(vm, "core", 4);
 
   vm->objs.builtin_add = make_builtin(vm, builtin_add);
   return vm;
@@ -502,11 +506,6 @@ obj_t* eval(vm_t* vm, obj_t* o, map_t* env) {
   // obj_t* arguments;
   // obj_t* result;
   while(true) {
-    printf("eval ");
-    obj_print(o);
-    printf("env: ");
-    obj_print(env);
-
     if(is_self_evaluating(o)) {
       return o;
     } else if(is_symbol(o)) {
@@ -527,6 +526,17 @@ obj_t* eval(vm_t* vm, obj_t* o, map_t* env) {
         obj_t* params = cons_first(o);
         obj_t* body = cons_first(cons_rest(o));
         return make_lambda(vm, params, body, env);
+      } else if(f == vm->objs.sym_import) {
+        obj_t* lib = cons_first(o);
+        o = cons_rest(o);
+        obj_t* sym = cons_first(o);
+        EXPECT(is_nil(cons_rest(o)));
+        EXPECT(lib == vm->objs.sym_core);
+        if(sym == vm->objs.sym_plus) {
+          return vm->objs.builtin_add;
+        } else {
+          EXPECT(0);
+        }
       } else {
         f = eval(vm, f, env);
         if(is_builtin(f)) {
@@ -772,6 +782,13 @@ void testParseAndEval() {
     EXPECT_INT_EQ(integer_value(res), 3);
   }
 
+  {
+    obj_t* input = parse(vm, "((import core +) 1 2)");
+    obj_t* res = eval(vm, input, make_nil(vm));
+
+    EXPECT_INT_EQ(integer_value(res), 3);
+  }
+
   free_vm(vm);
 }
 
@@ -783,7 +800,32 @@ void testAll() {
 }
 
 int main(int argc, char** argv) {
-  testAll();
+  if(argc == 2) {
+    if(strcmp(argv[1], "--test") == 0) {
+      testAll();
+      return 0;
+    } else {
+      FILE* f = fopen(argv[1], "rb");
+      fseek(f, 0, SEEK_END);
+      size_t len = ftell(f);
+      fseek(f, 0, SEEK_SET);
+      char* buf = (char*) malloc(len + 1);
+      fread(buf, 1, len, f);
+      fclose(f);
+      buf[len] = 0;
+
+      vm_t* vm = make_vm(4096);
+
+      obj_t* obj = parse(vm, buf);
+      obj_t* env = vm->objs.nil;
+
+      obj_t* result = eval(vm, obj, env);
+
+      obj_print(result);
+
+      free_vm(vm);
+    }
+  }
   return 0;
 }
 
