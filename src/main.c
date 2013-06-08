@@ -3,13 +3,16 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdarg.h>
 
 void _assert_failed(const char* file, int line, const char* message, ...);
 
 #define EXPECT(e) do { if(!(e)) {_assert_failed(__FILE__, __LINE__, "%s", #e);} } while(0)
-#define EXPECT_MSG(e, msg, ...) do { if(!(e)) {_assert_failed(__FILE__, __LINE__, "%s\n  " msg, #e, ##__VA_ARGS__);} } while(0)
+#define EXPECT_MSG(e, msg, ...) \
+  do { if(!(e)) {_assert_failed(__FILE__, __LINE__, "%s\n  " msg, #e, ##__VA_ARGS__);} } while(0)
 
-#define EXPECT_INT_EQ(expected, actual) EXPECT_MSG((expected) == (actual), "expected: %d, actual: %d", expected, actual);
+#define EXPECT_INT_EQ(expected, actual) \
+  EXPECT_MSG((expected) == (actual), "expected: %d, actual: %d", expected, actual);
 
 #define ENABLE_ASSERTS
 #define ENABLE_DUHS
@@ -55,6 +58,7 @@ enum {
   OBJ_INTEGER,
   OBJ_SYMBOL,
   OBJ_BUILTIN,
+  OBJ_BOOL,
 };
 
 struct _vm_t;
@@ -80,6 +84,9 @@ typedef struct _obj_t {
     struct {
       builtin_func_t func;
     } as_builtin;
+    struct {
+      bool value;
+    } as_bool;
   };
 } obj_t;
 
@@ -114,6 +121,12 @@ typedef struct _vm_t {
   struct {
     obj_t* nil;
 
+    obj_t* bool_true;
+    obj_t* bool_false;
+
+    obj_t* sym_if;
+    obj_t* sym_plus;
+
     obj_t* builtin_add;
   } objs;
 
@@ -121,6 +134,8 @@ typedef struct _vm_t {
 } vm_t;
 
 obj_t* make_nil(vm_t* vm);
+obj_t* make_bool(vm_t* vm, bool value);
+obj_t* make_symbol(vm_t* vm, const char* name, size_t length);
 obj_t* make_builtin(vm_t* vm, builtin_func_t func);
 
 static obj_t* builtin_add(vm_t* vm, obj_t* args);
@@ -133,6 +148,12 @@ vm_t* make_vm(size_t heap_block_size) {
   vm->syms = make_nil(vm);
 
   vm->objs.nil = make_nil(vm);
+
+  vm->objs.bool_true = make_bool(vm, true);
+  vm->objs.bool_false = make_bool(vm, false);
+
+  vm->objs.sym_if = make_symbol(vm, "if", 2);
+  vm->objs.sym_plus = make_symbol(vm, "+", 1);
 
   vm->objs.builtin_add = make_builtin(vm, builtin_add);
   return vm;
@@ -163,6 +184,8 @@ obj_t* make_obj(vm_t* vm, int type) {
   return ret;
 }
 
+void obj_print(obj_t* value);
+
 bool is_nil(obj_t* o) {
   return o->flags == OBJ_NIL;
 }
@@ -182,6 +205,27 @@ obj_t* make_cons(vm_t* vm, obj_t* a, obj_t* b) {
   o->as_cons.first = a;
   o->as_cons.rest = b;
   return o;
+}
+
+obj_t* make_list(vm_t* vm, ...) {
+  va_list ap;
+  va_start(ap, vm);
+
+  obj_t* nil = vm->objs.nil;
+  obj_t* result = nil;
+  obj_t** ptr = &result;
+  while(true) {
+    obj_t* value = va_arg(ap, obj_t*);
+    if(!value) {
+      break;
+    }
+    *ptr = make_cons(vm, value, nil);
+    ptr = &(*ptr)->as_cons.rest;
+  }
+
+  va_end(ap);
+
+  return result;
 }
 
 obj_t* cons_first(obj_t* o) {
@@ -278,6 +322,105 @@ obj_t* make_builtin(vm_t* vm, builtin_func_t func) {
   return o;
 }
 
+bool is_bool(obj_t* o) {
+  return o->flags == OBJ_BOOL;
+}
+
+bool bool_value(obj_t* o) {
+  EXPECT(is_bool(o));
+  return o->as_bool.value;
+}
+
+obj_t* make_bool(vm_t* vm, bool value) {
+  obj_t* o = make_obj(vm, OBJ_BOOL);
+  o->as_bool.value = value;
+  return o;
+}
+
+bool obj_equal(obj_t* a, obj_t* b) {
+  if(a->flags != b->flags) {
+    return false;
+  }
+  switch(a->flags) {
+  case OBJ_NIL:
+    return is_nil(b);
+  case OBJ_CONS:
+    if(obj_equal(cons_first(a), cons_first(b))) {
+      if(obj_equal(cons_rest(a), cons_rest(b))) {
+        return true;
+      }
+    }
+    return false;
+  case OBJ_STRING:
+    return strcmp(string_value(a), string_value(b)) == 0;
+  case OBJ_INTEGER:
+    return integer_value(a) == integer_value(b);
+  case OBJ_SYMBOL:
+    return a == b;
+  case OBJ_BUILTIN:
+    return a == b;
+  case OBJ_BOOL:
+    return bool_value(a) == bool_value(b);
+  default:
+    EXPECT(0);
+    return false;
+  }
+}
+
+void print_value(obj_t* value);
+void print_list(obj_t* value) {
+  switch(value->flags) {
+  case OBJ_NIL:
+    printf(")");
+    return;
+  case OBJ_CONS:
+    printf(" ");
+    print_value(cons_first(value));
+    print_list(cons_rest(value));
+    return;
+  default:
+    printf(" . ");
+    print_value(value);
+    return;
+  }
+}
+
+void print_value(obj_t* value) {
+  switch(value->flags) {
+  case OBJ_NIL:
+    printf("()");
+    return;
+  case OBJ_CONS:
+    printf("(");
+    print_value(cons_first(value));
+    print_list(cons_rest(value));
+    return;
+  case OBJ_STRING:
+    printf("\"%s\"", string_value(value));
+    return;
+  case OBJ_INTEGER:
+    printf("%d", integer_value(value));
+    return;
+  case OBJ_SYMBOL:
+    printf("\"%s\"", symbol_name(value));
+    return;
+  case OBJ_BUILTIN:
+    printf("<builtin@%p>", builtin_func(value));
+    return;
+  case OBJ_BOOL:
+    printf("%s", bool_value(value) ? "#t" : "#f");
+    return;
+  default:
+    EXPECT(0);
+    return;
+  }
+}
+
+void obj_print(obj_t* value) {
+  print_value(value);
+  printf("\n");
+}
+
 obj_t* builtin_add(vm_t* vm, obj_t* args) {
   int res = 0;
   while(!is_nil(args)) {
@@ -289,31 +432,45 @@ obj_t* builtin_add(vm_t* vm, obj_t* args) {
 }
 
 bool is_self_evaluating(obj_t* o) {
-  return is_integer(o) || is_nil(o) || is_builtin(o);
+  return is_integer(o) || is_nil(o) || is_builtin(o) || is_bool(o);
 }
 
 obj_t* eval(vm_t* vm, obj_t* o, map_t* env) {
   // obj_t* procedure;
   // obj_t* arguments;
   // obj_t* result;
+  while(true) {
+    if(is_self_evaluating(o)) {
+      return o;
+    } else if(is_symbol(o)) {
+      return map_lookup(env, o);
+    } else if(is_cons(o)) {
+      obj_t* f = cons_first(o);
+      o = cons_rest(o);
 
-  if(is_self_evaluating(o)) {
-    return o;
-  } else if(is_symbol(o)) {
-    return map_lookup(env, o);
-  } else if(is_cons(o)) {
-    obj_t* f = cons_first(o);
-    f = eval(vm, f, env);
-    if(is_builtin(f)) {
-      return builtin_func(f)(vm, cons_rest(o));
+      if(f == vm->objs.sym_if) {
+        obj_t* c = cons_first(o);
+        c = eval(vm, c, env);
+        if(bool_value(c)) {
+          o = cons_first(cons_rest(o));
+        } else {
+          o = cons_first(cons_rest(cons_rest(o)));
+        }
+      } else {
+        f = eval(vm, f, env);
+        if(is_builtin(f)) {
+          return builtin_func(f)(vm, o);
+        } else {
+          EXPECT(0);
+          return 0;
+        }
+      }
     } else {
       EXPECT(0);
+      return 0;
     }
-  } else {
-    EXPECT(0);
   }
 
-  return 0;
 }
 
 const char* skip_ws(const char* text) {
@@ -358,6 +515,17 @@ static obj_t* parse_value(vm_t* vm, const char** text) {
       (*text)++;
     }
     return make_integer(vm, value);
+  } else if(**text == '#') {
+    (*text)++;
+    switch(*((*text)++)) {
+    case 't':
+      return vm->objs.bool_true;
+    case 'f':
+      return vm->objs.bool_false;
+    default:
+      EXPECT(0);
+      return 0;
+    }
   } else if(is_sym_char(**text)) {
     const char* start = *text;
     while(is_sym_char(**text)) {
@@ -374,12 +542,51 @@ obj_t* parse(vm_t* vm, const char* text) {
   return parse_value(vm, &text);
 }
 
+void testMakeList() {
+  vm_t* vm = make_vm(4096);
+
+  obj_t* one = make_integer(vm, 1);
+  obj_t* two = make_integer(vm, 2);
+  obj_t* three = make_integer(vm, 3);
+
+  {
+    obj_t* a = make_list(vm, 0);
+    obj_t* b = vm->objs.nil;
+    EXPECT(obj_equal(a, b));
+  }
+
+  {
+    obj_t* a = make_list(vm, one, 0);
+    obj_t* b = make_cons(vm, one, vm->objs.nil);
+    EXPECT(obj_equal(a, b));
+  }
+
+  {
+    obj_t* a = make_list(vm, one, two, 0);
+    obj_t* b = make_cons(vm, one, make_cons(vm, two, vm->objs.nil));
+    EXPECT(obj_equal(a, b));
+  }
+
+  {
+    obj_t* a = make_list(vm, one, two, three, 0);
+    obj_t* b = make_cons(vm, one, make_cons(vm, two, make_cons(vm, three, vm->objs.nil)));
+    EXPECT(obj_equal(a, b));
+  }
+
+  free_vm(vm);
+}
+
 void testParse() {
   vm_t* vm = make_vm(4096);
 
   {
     EXPECT_INT_EQ(integer_value(parse(vm, "1")), 1);
     EXPECT_INT_EQ(integer_value(parse(vm, "42")), 42);
+  }
+
+  {
+    EXPECT(bool_value(parse(vm, "#t")) == true);
+    EXPECT(bool_value(parse(vm, "#f")) == false);
   }
 
   {
@@ -411,7 +618,8 @@ void testEval() {
     obj_t* one = make_integer(vm, 1);
     obj_t* two = make_integer(vm, 2);
 
-    obj_t* list = make_cons(vm, add, make_cons(vm, one, make_cons(vm, two, make_nil(vm))));
+    obj_t* list = make_list(vm, add, one, two, 0);
+
     EXPECT_INT_EQ(integer_value(eval(vm, list, 0)), 3);
   }
 
@@ -423,18 +631,39 @@ void testEval() {
   }
 
   {
-    obj_t* plus = make_symbol(vm, "+", 1);
+    obj_t* plus = vm->objs.sym_plus;
 
     obj_t* add = vm->objs.builtin_add;
     obj_t* one = make_integer(vm, 1);
     obj_t* two = make_integer(vm, 2);
 
-    obj_t* list = make_cons(vm, plus, make_cons(vm, one, make_cons(vm, two, make_nil(vm))));
+    obj_t* list = make_list(vm, plus, one, two, 0);
 
     obj_t* pair = make_cons(vm, plus, add);
     obj_t* env = make_cons(vm, pair, make_nil(vm));
     EXPECT_INT_EQ(integer_value(eval(vm, list, env)), 3);
   }
+
+  {
+    obj_t* _if = vm->objs.sym_if;
+    obj_t* _true = vm->objs.bool_true;
+    obj_t* one = make_integer(vm, 1);
+    obj_t* two = make_integer(vm, 2);
+
+    obj_t* list = make_list(vm, _if, _true, one, two, 0);
+    EXPECT_INT_EQ(integer_value(eval(vm, list, 0)), 1);
+  }
+
+  {
+    obj_t* _if = vm->objs.sym_if;
+    obj_t* _false = vm->objs.bool_false;
+    obj_t* one = make_integer(vm, 1);
+    obj_t* two = make_integer(vm, 2);
+
+    obj_t* list = make_list(vm, _if, _false, one, two, 0);
+    EXPECT_INT_EQ(integer_value(eval(vm, list, 0)), 2);
+  }
+
   free_vm(vm);
 }
 
@@ -442,7 +671,7 @@ void testParseAndEval() {
   vm_t* vm = make_vm(4096);
 
   {
-    obj_t* plus = make_symbol(vm, "+", 1);
+    obj_t* plus = vm->objs.sym_plus;
     obj_t* add = vm->objs.builtin_add;
 
     obj_t* pair = make_cons(vm, plus, add);
@@ -458,6 +687,7 @@ void testParseAndEval() {
 }
 
 void testAll() {
+  testMakeList();
   testParse();
   testEval();
   testParseAndEval();
@@ -467,3 +697,4 @@ int main(int argc, char** argv) {
   testAll();
   return 0;
 }
+
