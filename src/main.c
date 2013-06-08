@@ -156,6 +156,13 @@ void* vm_alloc(vm_t* vm, size_t size) {
   return ret;
 }
 
+obj_t* make_obj(vm_t* vm, int type) {
+  obj_t* ret = (obj_t*) vm_alloc(vm, sizeof(obj_t));
+  memset(ret, 0xfe, sizeof(obj_t));
+  ret->flags = type;
+  return ret;
+}
+
 bool is_nil(obj_t* o) {
   return o->flags == OBJ_NIL;
 }
@@ -171,8 +178,7 @@ bool is_cons(obj_t* o) {
 }
 
 obj_t* make_cons(vm_t* vm, obj_t* a, obj_t* b) {
-  obj_t* o = (obj_t*) vm_alloc(vm, sizeof(obj_t));
-  o->flags = OBJ_CONS;
+  obj_t* o = make_obj(vm, OBJ_CONS);
   o->as_cons.first = a;
   o->as_cons.rest = b;
   return o;
@@ -209,8 +215,7 @@ bool is_integer(obj_t* o) {
 }
 
 obj_t* make_integer(vm_t* vm, int value) {
-  obj_t* o = (obj_t*) vm_alloc(vm, sizeof(obj_t));
-  o->flags = OBJ_INTEGER;
+  obj_t* o = make_obj(vm, OBJ_INTEGER);
   o->as_integer.value = value;
   return o;
 }
@@ -253,8 +258,7 @@ obj_t* make_symbol(vm_t* vm, const char* begin, size_t length) {
       return first;
     }
   }
-  o = (obj_t*) vm_alloc(vm, sizeof(obj_t));
-  o->flags = OBJ_SYMBOL;
+  o = make_obj(vm, OBJ_SYMBOL);
   o->as_symbol.name = strndup(begin, length);
   vm->syms = make_cons(vm, o, vm->syms);
   return o;
@@ -270,8 +274,7 @@ builtin_func_t builtin_func(obj_t* o) {
 }
 
 obj_t* make_builtin(vm_t* vm, builtin_func_t func) {
-  obj_t* o = (obj_t*) vm_alloc(vm, sizeof(obj_t));
-  o->flags = OBJ_BUILTIN;
+  obj_t* o = make_obj(vm, OBJ_BUILTIN);
   o->as_builtin.func = func;
   return o;
 }
