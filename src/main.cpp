@@ -101,6 +101,7 @@ public:
       const char* name;
     } as_symbol;
     struct {
+      const char* name;
       BuiltinFunc func;
     } as_builtin;
     struct {
@@ -173,7 +174,7 @@ size_t max_sizet(size_t a, size_t b) {
 }
 
 Value make_symbol(VM& vm, const char* name);
-Value make_builtin(VM& vm, BuiltinFunc func);
+Value make_builtin(VM& vm, const char* name, BuiltinFunc func);
 Value make_cons(VM& vm, Value first, Value rest);
 
 Value builtin_add(VM& vm, Value args);
@@ -280,14 +281,14 @@ public:
     true_->as_bool.value = true;
     false_->as_bool.value = false;
 
-    objs.builtin_add = make_builtin(vm, builtin_add);
-    objs.builtin_is_cons = make_builtin(vm, builtin_is_cons);
-    objs.builtin_cons = make_builtin(vm, builtin_cons);
-    objs.builtin_first = make_builtin(vm, builtin_first);
-    objs.builtin_rest = make_builtin(vm, builtin_rest);
-    objs.builtin_is_symbol = make_builtin(vm, builtin_is_symbol);
-    objs.builtin_is_equal = make_builtin(vm, builtin_is_equal);
-    objs.builtin_is_nil = make_builtin(vm, builtin_is_nil);
+    objs.builtin_add = make_builtin(vm, "add", builtin_add);
+    objs.builtin_is_cons = make_builtin(vm, "is_cons", builtin_is_cons);
+    objs.builtin_cons = make_builtin(vm, "cons", builtin_cons);
+    objs.builtin_first = make_builtin(vm, "first", builtin_first);
+    objs.builtin_rest = make_builtin(vm, "rest", builtin_rest);
+    objs.builtin_is_symbol = make_builtin(vm, "is_symbol", builtin_is_symbol);
+    objs.builtin_is_equal = make_builtin(vm, "is_equal", builtin_is_equal);
+    objs.builtin_is_nil = make_builtin(vm, "is_nil", builtin_is_nil);
 
     core_imports = make_list(vm,
       make_cons(vm, syms.plus, objs.builtin_add),
@@ -481,8 +482,14 @@ BuiltinFunc builtin_func(Value o) {
   return o->as_builtin.func;
 }
 
-Value make_builtin(VM& vm, BuiltinFunc func) {
+const char* builtin_name(Value o) {
+  EXPECT(o.isBuiltin());
+  return o->as_builtin.name;
+}
+
+Value make_builtin(VM& vm, const char* name, BuiltinFunc func) {
   Value o = new(vm) Object(Object::Type::Builtin);
+  o->as_builtin.name = name;
   o->as_builtin.func = func;
   return o;
 }
@@ -597,7 +604,7 @@ bool print_value(Value value, int indent, bool list_on_newline, FILE* stream) {
     fprintf(stream, "%s", symbol_name(value));
     return false;
   case Object::Type::Builtin:
-    fprintf(stream, "<builtin@%p>", builtin_func(value));
+    fprintf(stream, "<builtin:%s>", builtin_name(value));
     return false;
   case Object::Type::Bool:
     fprintf(stream, "%s", bool_value(value) ? "#t" : "#f");
@@ -777,6 +784,7 @@ Value eval(VM& vm, Value o, Map env) {
         f = eval(vm, f, env);
         if(f.isBuiltin()) {
           Value params = eval_list(vm, o, env);
+          EvalFrame builtinFrame(vm, make_cons(vm, f, params), env);
           Value res = builtin_func(f)(vm, params);
           return res;
         } else if(f.isLambda()) {

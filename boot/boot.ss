@@ -3,28 +3,51 @@
       (letlambdas 
         (((transform program) 
             (macroexpand 
-              (transform-lets 
-                (transform-imports program ())) 
+              (transform-imports program ()) 
               (cons 
                 (cons 
-                  (quote lambda) process-lambda) ()))) 
+                  (quote lambda) process-lambda) 
+                (cons 
+                  (cons 
+                    (quote let) process-let) ())))) 
+          ((process-let form) 
+            (cons 
+              (quote letlambdas) 
+              (cons 
+                (let-fn 
+                  (rest form)) 
+                (cons 
+                  (let-body 
+                    (rest form)) ())))) 
+          ((let-body form) 
+            (cons 
+              (quote current-let) 
+              (seconds 
+                (first form)))) 
+          ((let-fn form) 
+            (make-lambdas 
+              (quote current-let) 
+              (cons 
+                (firsts 
+                  (first form)) 
+                (rest form)))) 
           ((process-lambda form) 
             (cons 
               (quote letlambdas) 
               (cons 
                 (make-lambdas 
+                  (quote current-lambda) 
                   (rest form)) 
                 (cons 
                   (quote current-lambda) ())))) 
-          ((make-lambdas form) 
+          ((make-lambdas name form) 
             (letlambdas 
               (((current-let fn-args) 
                   (cons 
                     (cons fn-args 
                       (rest form)) ()))) 
               (current-let 
-                (cons 
-                  (quote current-lambda) 
+                (cons name 
                   (first form))))) 
           ((macroexpand program macros) 
             (if 
@@ -42,7 +65,8 @@
                                 (cons f 
                                   (map 
                                     (expander macros) r)) 
-                                (m program)))) 
+                                (macroexpand 
+                                  (m program) macros)))) 
                           (current-let 
                             (find-macro f macros))) 
                         (cons 
@@ -75,50 +99,6 @@
                   (first macros)) 
                 (find-macro sym 
                   (rest macros))))) 
-          ((transform-lets program) 
-            (if 
-              (nil? program) () 
-              (cons 
-                (transform-let 
-                  (first program)) 
-                (transform-lets 
-                  (rest program))))) 
-          ((transform-let form) 
-            (if 
-              (cons? form) 
-              (if 
-                (eq? 
-                  (first form) 
-                  (quote let)) 
-                (cons 
-                  (quote letlambdas) 
-                  (cons 
-                    (let-fn 
-                      (rest form)) 
-                    (cons 
-                      (let-body 
-                        (rest form)) ()))) 
-                (cons 
-                  (transform-let 
-                    (first form)) 
-                  (transform-lets 
-                    (rest form)))) form)) 
-          ((let-body form) 
-            (cons 
-              (quote current-let) 
-              (seconds 
-                (first form)))) 
-          ((let-fn form) 
-            (cons 
-              (cons 
-                (cons 
-                  (quote current-let) 
-                  (firsts 
-                    (first form))) 
-                (cons 
-                  (transform-let 
-                    (first 
-                      (rest form))) ())) ())) 
           ((seconds val) 
             (if 
               (nil? val) () 

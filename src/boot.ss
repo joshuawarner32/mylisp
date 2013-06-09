@@ -74,36 +74,6 @@
     (cons (first (rest (first val))) (seconds (rest val))))
 )
 
-(define (let-fn form)
-  (cons
-    (cons
-      (cons (quote current-let) (firsts (first form)))
-      (cons (transform-let (first (rest form))) ()))
-    ())
-)
-
-(define (let-body form)
-  (cons (quote current-let) (seconds (first form)))
-)
-
-(define (transform-let form)
-  (if (cons? form)
-    (if (eq? (first form) (quote let))
-      (cons (quote letlambdas)
-        (cons (let-fn (rest form))
-          (cons (let-body (rest form)) ())))
-      (cons (transform-let (first form))
-        (transform-lets (rest form))))
-    form
-  )
-)
-
-(define (transform-lets program)
-  (if (nil? program) ()
-    (cons (transform-let (first program))
-          (transform-lets (rest program))))
-)
-
 (define (find-macro sym macros)
   (if (nil? macros) ()
     (if (eq? sym (first (first macros)))
@@ -129,30 +99,47 @@
           (let ((m (find-macro f macros)))
             (if (nil? m)
               (cons f (map (expander macros) r))
-              (m program))
+              (macroexpand (m program) macros))
             )
           (cons (macroexpand f macros) (map (expander macros) r))))
       program)))
 
-(define (make-lambdas form)
-  (let ((fn-args (cons (quote current-lambda) (first form))))
+(define (make-lambdas name form)
+  (let ((fn-args (cons name (first form))))
     (cons
       (cons fn-args (rest form))
       ())))
 
 (define (process-lambda form)
   (cons (quote letlambdas)
-    (cons (make-lambdas (rest form))
+    (cons (make-lambdas (quote current-lambda) (rest form))
       (cons (quote current-lambda)
+        ()))))
+
+(define (let-fn form)
+  (make-lambdas (quote current-let)
+    (cons (firsts (first form))
+      (rest form))))
+
+(define (let-body form)
+  (cons
+    (quote current-let)
+    (seconds (first form))))
+
+(define (process-let form)
+  (cons (quote letlambdas)
+    (cons (let-fn (rest form))
+      (cons (let-body (rest form))
         ()))))
 
 (define (transform program)
   (macroexpand
-    (transform-lets
-      (transform-imports program ()))
+      (transform-imports program ())
     (cons
       (cons (quote lambda) process-lambda)
-      ())
+      (cons 
+        (cons (quote let) process-let)
+        ()))
   )
 )
 
