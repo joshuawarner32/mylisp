@@ -1,9 +1,35 @@
 (letlambdas 
-  (((some-random-symbol + cons? cons first rest nil? eq?) 
+  (((some-random-symbol + sym? cons? cons first rest nil? eq?) 
       (letlambdas 
         (((transform program) 
-            (transform-lets 
-              (transform-imports program ()))) 
+            (macroexpand 
+              (transform-lets 
+                (transform-imports program ())) ())) 
+          ((macroexpand program macros) 
+            (if 
+              (nil? program) () 
+              (if 
+                (cons? program) 
+                (letlambdas 
+                  (((current-let f r) 
+                      (if 
+                        (sym? f) 
+                        (cons f r) 
+                        (cons f r)))) 
+                  (current-let 
+                    (first program) 
+                    (rest program))) program))) 
+          ((find-macro sym macros) 
+            (if 
+              (nil? macros) () 
+              (if 
+                (eq? sym 
+                  (first 
+                    (first macros))) 
+                (rest 
+                  (first macros)) 
+                (find-macro sym 
+                  (rest macros))))) 
           ((transform-lets program) 
             (if 
               (nil? program) () 
@@ -45,8 +71,9 @@
                   (firsts 
                     (first form))) 
                 (cons 
-                  (first 
-                    (rest form)) ())) ())) 
+                  (transform-let 
+                    (first 
+                      (rest form))) ())) ())) 
           ((seconds val) 
             (if 
               (nil? val) () 
@@ -146,6 +173,7 @@
                   (first program) new-program))))) transform))) 
   (some-random-symbol 
     (import core +) 
+    (import core sym?) 
     (import core cons?) 
     (import core cons) 
     (import core first) 

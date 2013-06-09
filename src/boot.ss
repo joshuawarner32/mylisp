@@ -4,6 +4,7 @@
 (import core first)
 (import core cons)
 (import core cons?)
+(import core sym?)
 (import core +)
 
 (define (internal-transform-defines program new-program)
@@ -77,7 +78,7 @@
   (cons
     (cons
       (cons (quote current-let) (firsts (first form)))
-      (cons (first (rest form)) ()))
+      (cons (transform-let (first (rest form))) ()))
     ())
 )
 
@@ -103,9 +104,31 @@
           (transform-lets (rest program))))
 )
 
+(define (find-macro sym macros)
+  (if (nil? macros) ()
+    (if (eq? sym (first (first macros)))
+      (rest (first macros))
+      (find-macro sym (rest macros)))))
+
+(define (macroexpand program macros)
+  (if (nil? program) ()
+    (if (cons? program)
+      (let ((f (first program))
+            (r (rest program)))
+        (if (sym? f)
+          ; (let ((m (find-macro f macros)))
+            ; (if (nil? m)
+              (cons f r)
+              ; (m program))
+            ; )
+          (cons f r)))
+      program)))
+
 (define (transform program)
-  (transform-lets
-    (transform-imports program ()))
+  (macroexpand
+    (transform-lets
+      (transform-imports program ()))
+    ())
 )
 
 transform
