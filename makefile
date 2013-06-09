@@ -10,11 +10,14 @@ executable = build/mylisp
 
 run: $(executable) test
 	echo "running"
-	${<} src/boot.ss src/test.ss
+	${<} boot/boot.ss src/test.ss
 
 boot: $(executable) test
-	echo "booting"
-	${<} src/boot.ss
+	echo "booting 1"
+	${<} boot/boot.ss src/boot.ss > build/boot-1.ss
+	echo "booting 2"
+	${<} build/boot-1.ss src/boot.ss > build/boot-2.ss
+	diff -wuq build/boot-1.ss build/boot-2.ss && cp build/boot-2.ss boot/boot.ss && echo "success"
 
 test: $(executable)
 	echo "running tests"

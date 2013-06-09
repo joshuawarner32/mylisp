@@ -34,17 +34,25 @@ void _assert_failed(const char* file, int line, const char* message, ...);
 #endif
 
 void _assert_failed(const char* file, int line, const char* message, ...) {
-  printf("assertion failure, %s:%d:\n  ", file, line);
+  fprintf(stderr, "assertion failure, %s:%d:\n  ", file, line);
 
   va_list ap;
   va_start(ap, message);
   vprintf(message, ap);
   va_end(ap);
 
-  printf("\n");
+  fprintf(stderr, "\n");
 
   exit(1);
 }
+
+// #define ENABLE_DEBUG
+
+#ifndef ENABLE_DEBUG
+#define DEBUG_LOG(val)
+#else
+#define DEBUG_LOG(val) val
+#endif
 
 typedef int bool;
 
@@ -253,7 +261,7 @@ obj_t* make_obj(vm_t* vm, int type) {
   return ret;
 }
 
-void obj_print(obj_t* value);
+void debug_print(obj_t* value);
 
 bool is_nil(obj_t* o) {
   return o->flags == OBJ_NIL;
@@ -366,7 +374,7 @@ const char* symbol_name(obj_t* o) {
 typedef obj_t map_t;
 
 obj_t* map_lookup(map_t* map, obj_t* key) {
-  map_t* orig = map;
+  DEBUG_LOG(map_t* orig = map);
   while(!(is_nil(map))) {
     obj_t* item = cons_first(map);
     if(cons_first(item) == key) {
@@ -375,8 +383,8 @@ obj_t* map_lookup(map_t* map, obj_t* key) {
       map = cons_rest(map);
     }
   }
-  printf("lookup failed for: "); obj_print(key);
-  printf("  in: "); obj_print(orig);
+  DEBUG_LOG(fprintf(stderr, "lookup failed for: "); debug_print(key));
+  DEBUG_LOG(fprintf(stderr, "  in: "); debug_print(orig));
   EXPECT(0);
   return 0;
 }
@@ -491,54 +499,54 @@ bool obj_equal(obj_t* a, obj_t* b) {
   }
 }
 
-bool print_value(obj_t* value, int indent, bool list_on_newline);
-bool print_list(obj_t* value, int indent, bool list_on_newline) {
+bool print_value(obj_t* value, int indent, bool list_on_newline, FILE* stream);
+bool print_list(obj_t* value, int indent, bool list_on_newline, FILE* stream) {
   switch(value->flags) {
   case OBJ_NIL:
-    printf(")");
+    fprintf(stream, ")");
     return false;
   case OBJ_CONS:
-    printf(" ");
-    print_value(cons_first(value), indent, true);
-    print_list(cons_rest(value), indent, true);
+    fprintf(stream, " ");
+    print_value(cons_first(value), indent, true, stream);
+    print_list(cons_rest(value), indent, true, stream);
     return true;
   default:
-    printf(" . ");
-    print_value(value, indent, true);
-    printf(")");
+    fprintf(stream, " . ");
+    print_value(value, indent, true, stream);
+    fprintf(stream, ")");
     return true;
   }
 }
 
-bool print_value(obj_t* value, int indent, bool list_on_newline) {
+bool print_value(obj_t* value, int indent, bool list_on_newline, FILE* stream) {
   switch(value->flags) {
   case OBJ_NIL:
-    printf("()");
+    fprintf(stream, "()");
     return false;
   case OBJ_CONS:
     if(list_on_newline) {
-      printf("\n%*s", indent * 2, "");
+      fprintf(stream, "\n%*s", indent * 2, "");
     }
-    printf("(");
-    print_value(cons_first(value), indent + 1, false);
-    return print_list(cons_rest(value), indent + 1, true);
+    fprintf(stream, "(");
+    print_value(cons_first(value), indent + 1, false, stream);
+    return print_list(cons_rest(value), indent + 1, true, stream);
   case OBJ_STRING:
-    printf("\"%s\"", string_value(value));
+    fprintf(stream, "\"%s\"", string_value(value));
     return false;
   case OBJ_INTEGER:
-    printf("%d", integer_value(value));
+    fprintf(stream, "%d", integer_value(value));
     return false;
   case OBJ_SYMBOL:
-    printf("%s", symbol_name(value));
+    fprintf(stream, "%s", symbol_name(value));
     return false;
   case OBJ_BUILTIN:
-    printf("<builtin@%p>", builtin_func(value));
+    fprintf(stream, "<builtin@%p>", builtin_func(value));
     return false;
   case OBJ_BOOL:
-    printf("%s", bool_value(value) ? "#t" : "#f");
+    fprintf(stream, "%s", bool_value(value) ? "#t" : "#f");
     return false;
   case OBJ_LAMBDA:
-    printf("<lambda@%p>", value);
+    fprintf(stream, "<lambda@%p>", value);
     return false;
   default:
     EXPECT(0);
@@ -547,8 +555,13 @@ bool print_value(obj_t* value, int indent, bool list_on_newline) {
 }
 
 void obj_print(obj_t* value) {
-  print_value(value, 0, false);
-  printf("\n");
+  print_value(value, 0, false, stdout);
+  fprintf(stdout, "\n");
+}
+
+void debug_print(obj_t* value) {
+  print_value(value, 0, false, stderr);
+  fprintf(stderr, "\n");
 }
 
 obj_t* builtin_add(vm_t* vm, obj_t* args) {
@@ -642,11 +655,11 @@ obj_t* make_lambdas_env(vm_t* vm, obj_t* lambdas, obj_t* env) {
     obj_t* body = cons_first(lambda);
 
     obj_t* name = cons_first(name_and_params);
-    printf("name: "); obj_print(name);
+    DEBUG_LOG(fprintf(stderr, "name: "); debug_print(name));
     EXPECT(is_symbol(name));
     obj_t* params = cons_rest(name_and_params);
-    printf("params: "); obj_print(params);
-    printf("body: "); obj_print(body);
+    DEBUG_LOG(fprintf(stderr, "params: "); debug_print(params));
+    DEBUG_LOG(fprintf(stderr, "body: "); debug_print(body));
 
     lambda = make_lambda(vm, params, body, env);
 
@@ -675,7 +688,7 @@ obj_t* eval(vm_t* vm, obj_t* o, map_t* env) {
   // obj_t* arguments;
   // obj_t* result;
   static int depth = 0;
-  printf("%*.seval: ", depth*2, ""); obj_print(o);
+  DEBUG_LOG(fprintf(stderr, "%*.seval: ", depth*2, ""); debug_print(o));
   while(true) {
     if(is_self_evaluating(o)) {
       return o;
@@ -686,7 +699,7 @@ obj_t* eval(vm_t* vm, obj_t* o, map_t* env) {
       obj_t* f = cons_first(o);
       o = cons_rest(o);
 
-      printf("f: %p %p: ", f, vm->objs.sym_letlambdas);obj_print(f);
+      DEBUG_LOG(fprintf(stderr, "f: %p %p: ", f, vm->objs.sym_letlambdas); debug_print(f));
 
       if(f == vm->objs.sym_if) {
         obj_t* c = cons_first(o);
@@ -699,7 +712,7 @@ obj_t* eval(vm_t* vm, obj_t* o, map_t* env) {
           o = cons_first(cons_rest(cons_rest(o)));
         }
       } else if(f == vm->objs.sym_letlambdas) {
-        printf("found letlambdas: "); obj_print(o);
+        DEBUG_LOG(fprintf(stderr, "found letlambdas: "); debug_print(o));
         obj_t* lambdas = cons_first(o);
         o = cons_rest(o);
         EXPECT(is_nil(cons_rest(o)));
@@ -718,14 +731,14 @@ obj_t* eval(vm_t* vm, obj_t* o, map_t* env) {
         return a;
       } else {
         depth++;
-        obj_t* orig = f;
+        DEBUG_LOG(obj_t* orig = f);
         f = eval(vm, f, env);
         depth--;
         if(is_builtin(f)) {
           obj_t* params = eval_list(vm, o, env);
-          printf("calling builtin: "); print_value(orig, 0, false); printf(" : "); obj_print(params);
+          DEBUG_LOG(fprintf(stderr, "calling builtin: "); print_value(orig, 0, false); fprintf(stderr, " : "); debug_print(params));
           obj_t* res = builtin_func(f)(vm, params);
-          printf("builtin result: "); obj_print(res);
+          DEBUG_LOG(fprintf(stderr, "builtin result: "); debug_print(res));
           return res;
         } else if(is_lambda(f)) {
           obj_t* params = eval_list(vm, o, env);
@@ -737,11 +750,11 @@ obj_t* eval(vm_t* vm, obj_t* o, map_t* env) {
         }
       }
     } else {
-      obj_print(o);
+      debug_print(o);
       EXPECT(0);
       return 0;
     }
-    printf("continuing: "); obj_print(o);
+    DEBUG_LOG(fprintf(stderr, "continuing: "); debug_print(o));
   }
 
 }
@@ -815,7 +828,7 @@ static obj_t* parse_value(vm_t* vm, const char** text) {
     }
     return make_symbol_with_length(vm, start, *text - start);
   } else {
-    printf("problem near [[[%s]]]\n", *text);
+    fprintf(stderr, "problem near [[[%s]]]\n", *text);
     EXPECT(0);
     return 0;
   }
@@ -823,7 +836,9 @@ static obj_t* parse_value(vm_t* vm, const char** text) {
 
 obj_t* parse(vm_t* vm, const char* text) {
   obj_t* result = parse_value(vm, &text);
+  text = skip_ws(text);
   if(*text != '\0') {
+    fprintf(stderr, "expected eof at [[[%s]]]\n", text);
     EXPECT(0);
   }
   return result;
@@ -835,7 +850,7 @@ obj_t* parse_multi(vm_t* vm, const char* text) {
   obj_t** ptr = &result;
   text = skip_ws(text);
   while(*text != '\0') {
-    printf("parsing at [[[%s]]]\n", text);
+    DEBUG_LOG(fprintf(stderr, "parsing at [[[%s]]]\n", text));
     obj_t* o = parse_value(vm, &text);
     // result = make_cons(vm, o, result);
     *ptr = make_cons(vm, o, nil);
@@ -1053,7 +1068,7 @@ int main(int argc, char** argv) {
 
       obj_t* result = run_file(vm, argv[1], false);
 
-      obj_print(result);
+      debug_print(result);
 
       free_vm(vm);
     }
@@ -1067,8 +1082,8 @@ int main(int argc, char** argv) {
     obj_t* transformed = eval(vm, make_list(vm, transformer, quoted_input, nullptr), vm->objs.nil);
 
     obj_t* result = eval(vm, transformed, vm->objs.nil);
-    obj_print(result);
-    // obj_print(transformed);
+    debug_print(result);
+    obj_print(transformed);
 
     free_vm(vm);
   }
