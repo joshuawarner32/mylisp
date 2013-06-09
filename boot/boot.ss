@@ -4,7 +4,28 @@
         (((transform program) 
             (macroexpand 
               (transform-lets 
-                (transform-imports program ())) ())) 
+                (transform-imports program ())) 
+              (cons 
+                (cons 
+                  (quote lambda) process-lambda) ()))) 
+          ((process-lambda form) 
+            (cons 
+              (quote letlambdas) 
+              (cons 
+                (make-lambdas 
+                  (rest form)) 
+                (cons 
+                  (quote current-lambda) ())))) 
+          ((make-lambdas form) 
+            (letlambdas 
+              (((current-let fn-args) 
+                  (cons 
+                    (cons fn-args 
+                      (rest form)) ()))) 
+              (current-let 
+                (cons 
+                  (quote current-lambda) 
+                  (first form))))) 
           ((macroexpand program macros) 
             (if 
               (nil? program) () 
@@ -14,11 +35,35 @@
                   (((current-let f r) 
                       (if 
                         (sym? f) 
-                        (cons f r) 
-                        (cons f r)))) 
+                        (letlambdas 
+                          (((current-let m) 
+                              (if 
+                                (nil? m) 
+                                (cons f 
+                                  (map 
+                                    (expander macros) r)) 
+                                (m program)))) 
+                          (current-let 
+                            (find-macro f macros))) 
+                        (cons 
+                          (macroexpand f macros) 
+                          (map 
+                            (expander macros) r))))) 
                   (current-let 
                     (first program) 
                     (rest program))) program))) 
+          ((expander macros) 
+            (letlambdas 
+              (((current-lambda program) 
+                  (macroexpand program macros))) current-lambda)) 
+          ((map func list) 
+            (if 
+              (nil? list) () 
+              (cons 
+                (func 
+                  (first list)) 
+                (map func 
+                  (rest list))))) 
           ((find-macro sym macros) 
             (if 
               (nil? macros) () 

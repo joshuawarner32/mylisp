@@ -110,25 +110,50 @@
       (rest (first macros))
       (find-macro sym (rest macros)))))
 
+(define (map func list)
+  (if (nil? list) ()
+    (cons
+      (func (first list))
+      (map func (rest list)))))
+
+(define (expander macros)
+  (lambda (program)
+    (macroexpand program macros)))
+
 (define (macroexpand program macros)
   (if (nil? program) ()
     (if (cons? program)
       (let ((f (first program))
             (r (rest program)))
         (if (sym? f)
-          ; (let ((m (find-macro f macros)))
-            ; (if (nil? m)
-              (cons f r)
-              ; (m program))
-            ; )
-          (cons f r)))
+          (let ((m (find-macro f macros)))
+            (if (nil? m)
+              (cons f (map (expander macros) r))
+              (m program))
+            )
+          (cons (macroexpand f macros) (map (expander macros) r))))
       program)))
+
+(define (make-lambdas form)
+  (let ((fn-args (cons (quote current-lambda) (first form))))
+    (cons
+      (cons fn-args (rest form))
+      ())))
+
+(define (process-lambda form)
+  (cons (quote letlambdas)
+    (cons (make-lambdas (rest form))
+      (cons (quote current-lambda)
+        ()))))
 
 (define (transform program)
   (macroexpand
     (transform-lets
       (transform-imports program ()))
-    ())
+    (cons
+      (cons (quote lambda) process-lambda)
+      ())
+  )
 )
 
 transform
