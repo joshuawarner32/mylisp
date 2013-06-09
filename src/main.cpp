@@ -387,8 +387,8 @@ Value cons_first(VM& vm, Value o) {
   return o->as_cons.first;
 }
 
-Value cons_rest(Value o) {
-  EXPECT(o.isCons());
+Value cons_rest(VM& vm, Value o) {
+  VM_EXPECT(vm, o.isCons());
   return o->as_cons.rest;
 }
 
@@ -396,7 +396,8 @@ size_t list_length(Value list) {
   size_t ret = 0;
   while(!list.isNil()) {
     ret++;
-    list = cons_rest(list);
+    ASSERT(list.isCons());
+    list = list->as_cons.rest;
   }
   return ret;
 }
@@ -443,9 +444,9 @@ Value map_lookup(VM& vm, Map map, Value key) {
   while(!p.isNil()) {
     Value item = cons_first(vm, p);
     if(cons_first(vm, item) == key) {
-      return cons_rest(item);
+      return cons_rest(vm, item);
     } else {
-      p = cons_rest(p);
+      p = cons_rest(vm, p);
     }
   }
   VM_ERROR(vm, "lookup failed");
@@ -456,7 +457,7 @@ Value make_symbol_with_length(VM& vm, const char* begin, size_t length) {
   Value o = vm.symList;
   while(!o.isNil()) {
     Value first = cons_first(vm, o);
-    o = cons_rest(o);
+    o = cons_rest(vm, o);
     const char* sym = symbol_name(first);
     size_t len = strlen(sym);
     if(len == length) {
@@ -523,7 +524,7 @@ bool obj_equal(Value a, Value b) {
     return b.isNil();
   case Object::Type::Cons:
     if(obj_equal(a->as_cons.first, a->as_cons.first)) {
-      if(obj_equal(cons_rest(a), cons_rest(b))) {
+      if(obj_equal(a->as_cons.rest, b->as_cons.rest)) {
         return true;
       }
     }
@@ -564,7 +565,7 @@ bool print_list(Value value, int indent, bool list_on_newline, FILE* stream) {
   case Object::Type::Cons:
     fprintf(stream, " ");
     print_value(value->as_cons.first, indent, true, stream);
-    print_list(cons_rest(value), indent, true, stream);
+    print_list(value->as_cons.rest, indent, true, stream);
     return true;
   default:
     fprintf(stream, " . ");
@@ -585,7 +586,7 @@ bool print_value(Value value, int indent, bool list_on_newline, FILE* stream) {
     }
     fprintf(stream, "(");
     print_value(value->as_cons.first, indent + 1, false, stream);
-    return print_list(cons_rest(value), indent + 1, true, stream);
+    return print_list(value->as_cons.rest, indent + 1, true, stream);
   case Object::Type::String:
     fprintf(stream, "\"%s\"", string_value(value));
     return false;
@@ -623,7 +624,7 @@ Value builtin_add(VM& vm, Value args) {
   int res = 0;
   while(!args.isNil()) {
     Value a = cons_first(vm, args);
-    args = cons_rest(args);
+    args = cons_rest(vm, args);
     res += integer_value(a);
   }
   return make_integer(vm, res);
@@ -631,47 +632,47 @@ Value builtin_add(VM& vm, Value args) {
 
 Value builtin_is_cons(VM& vm, Value args) {
   Value arg = cons_first(vm, args);
-  VM_EXPECT(vm, cons_rest(args).isNil());
+  VM_EXPECT(vm, cons_rest(vm, args).isNil());
   return arg.isCons() ? vm.true_ : vm.false_;
 }
 
 Value builtin_cons(VM& vm, Value args) {
   Value first = cons_first(vm, args);
-  args = cons_rest(args);
+  args = cons_rest(vm, args);
   Value rest = cons_first(vm, args);
-  VM_EXPECT(vm, cons_rest(args).isNil());
+  VM_EXPECT(vm, cons_rest(vm, args).isNil());
   return make_cons(vm, first, rest);
 }
 
 Value builtin_first(VM& vm, Value args) {
   Value arg = cons_first(vm, args);
-  VM_EXPECT(vm, cons_rest(args).isNil());
+  VM_EXPECT(vm, cons_rest(vm, args).isNil());
   return cons_first(vm, arg);
 }
 
 Value builtin_rest(VM& vm, Value args) {
   Value arg = cons_first(vm, args);
-  VM_EXPECT(vm, cons_rest(args).isNil());
-  return cons_rest(arg);
+  VM_EXPECT(vm, cons_rest(vm, args).isNil());
+  return cons_rest(vm, arg);
 }
 
 Value builtin_is_symbol(VM& vm, Value args) {
   Value arg = cons_first(vm, args);
-  VM_EXPECT(vm, cons_rest(args).isNil());
+  VM_EXPECT(vm, cons_rest(vm, args).isNil());
   return arg.isSymbol() ? vm.true_ : vm.false_;
 }
 
 Value builtin_is_equal(VM& vm, Value args) {
   Value a = cons_first(vm, args);
-  args = cons_rest(args);
+  args = cons_rest(vm, args);
   Value b = cons_first(vm, args);
-  VM_EXPECT(vm, cons_rest(args).isNil());
+  VM_EXPECT(vm, cons_rest(vm, args).isNil());
   return obj_equal(a, b) ? vm.true_ : vm.false_;
 }
 
 Value builtin_is_nil(VM& vm, Value args) {
   Value arg = cons_first(vm, args);
-  VM_EXPECT(vm, cons_rest(args).isNil());
+  VM_EXPECT(vm, cons_rest(vm, args).isNil());
   return arg.isNil() ? vm.true_ : vm.false_;
 }
 
@@ -685,8 +686,8 @@ Value extend_env(VM& vm, Value params, Value args, Value env) {
     EXPECT(key.isSymbol());
     Value value = cons_first(vm, args);
     return extend_env(vm,
-      cons_rest(params),
-      cons_rest(args),
+      cons_rest(vm, params),
+      cons_rest(vm, args),
       make_cons(vm, make_cons(vm, key, value), env));
   } else {
     EXPECT(args.isNil());
@@ -705,20 +706,20 @@ Value make_lambdas_env(VM& vm, Value lambdas, Value env) {
     Value lambda = cons_first(vm, lambdas);
 
     Value name_and_params = cons_first(vm, lambda);
-    lambda = cons_rest(lambda);
-    EXPECT(cons_rest(lambda).isNil());
+    lambda = cons_rest(vm, lambda);
+    EXPECT(cons_rest(vm, lambda).isNil());
     Value body = cons_first(vm, lambda);
 
     Value name = cons_first(vm, name_and_params);
     EXPECT(name.isSymbol());
-    Value params = cons_rest(name_and_params);
+    Value params = cons_rest(vm, name_and_params);
 
     lambda = make_lambda(vm, params, body, env);
 
     envptr->as_cons.first = make_cons(vm, name, lambda).getObj();
-    envptr = cons_rest(envptr);
+    envptr = cons_rest(vm, envptr);
 
-    lambdas = cons_rest(lambdas);
+    lambdas = cons_rest(vm, lambdas);
   }
 
   ASSERT(orig_env == envptr);
@@ -729,7 +730,7 @@ Value make_lambdas_env(VM& vm, Value lambdas, Value env) {
 Value eval(VM& vm, Value o, Map env);
 Value eval_list(VM& vm, Value o, Map env) {
   if(o.isCons()) {
-    return make_cons(vm, eval(vm, cons_first(vm, o), env), eval_list(vm, cons_rest(o), env));
+    return make_cons(vm, eval(vm, cons_first(vm, o), env), eval_list(vm, cons_rest(vm, o), env));
   } else {
     return eval(vm, o, env);
   }
@@ -748,32 +749,32 @@ Value eval(VM& vm, Value o, Map env) {
     } else if(o.isCons()) {
 
       Value f = cons_first(vm, o);
-      o = cons_rest(o);
+      o = cons_rest(vm, o);
 
       if(f == vm.syms.if_) {
         Value c = cons_first(vm, o);
         c = eval(vm, c, env);
         if(bool_value(c)) {
-          o = cons_first(vm, cons_rest(o));
+          o = cons_first(vm, cons_rest(vm, o));
         } else {
-          o = cons_first(vm, cons_rest(cons_rest(o)));
+          o = cons_first(vm, cons_rest(vm, cons_rest(vm, o)));
         }
       } else if(f == vm.syms.letlambdas) {
         Value lambdas = cons_first(vm, o);
-        o = cons_rest(o);
-        EXPECT(cons_rest(o).isNil());
+        o = cons_rest(vm, o);
+        EXPECT(cons_rest(vm, o).isNil());
         o = cons_first(vm, o);
         env = make_lambdas_env(vm, lambdas, env);
       } else if(f == vm.syms.import) {
         Value lib = cons_first(vm, o);
-        o = cons_rest(o);
+        o = cons_rest(vm, o);
         Value sym = cons_first(vm, o);
-        EXPECT(cons_rest(o).isNil());
+        EXPECT(cons_rest(vm, o).isNil());
         EXPECT(lib == vm.syms.core);
         return map_lookup(vm, vm.core_imports, sym);
       } else if(f == vm.syms.quote) {
         Value a = cons_first(vm, o);
-        EXPECT(cons_rest(o).isNil());
+        EXPECT(cons_rest(vm, o).isNil());
         return a;
       } else {
         f = eval(vm, f, env);
@@ -954,8 +955,8 @@ void testParse() {
     Value a = make_symbol(vm, "a");
     Value b = make_symbol(vm, "b");
     EXPECT(cons_first(vm, res) == a);
-    EXPECT(cons_first(vm, cons_rest(res)) == b);
-    EXPECT(cons_rest(cons_rest(res)).isNil());
+    EXPECT(cons_first(vm, cons_rest(vm, res)) == b);
+    EXPECT(cons_rest(vm, cons_rest(vm, res)).isNil());
   }
 }
 
