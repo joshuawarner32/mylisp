@@ -10,7 +10,7 @@ executable = build/mylisp
 
 run: $(executable) test
 	echo "running"
-	${<} --transformer boot/boot.ss src/test.ss
+	${<} --transformer boot/boot.ss src/prettyprint.ss
 
 boot: build/boot-1/boot.ss build/boot-2/boot.ss
 	diff -wuq ${^}

@@ -178,6 +178,10 @@ Value make_builtin(VM& vm, const char* name, BuiltinFunc func);
 Value make_cons(VM& vm, Value first, Value rest);
 
 Value builtin_add(VM& vm, Value args);
+Value builtin_sub(VM& vm, Value args);
+Value builtin_mul(VM& vm, Value args);
+Value builtin_div(VM& vm, Value args);
+Value builtin_modulo(VM& vm, Value args);
 Value builtin_is_cons(VM& vm, Value args);
 Value builtin_cons(VM& vm, Value args);
 Value builtin_first(VM& vm, Value args);
@@ -185,6 +189,9 @@ Value builtin_rest(VM& vm, Value args);
 Value builtin_is_symbol(VM& vm, Value args);
 Value builtin_is_equal(VM& vm, Value args);
 Value builtin_is_nil(VM& vm, Value args);
+Value builtin_is_int(VM& vm, Value args);
+Value builtin_concat(VM& vm, Value args);
+Value builtin_symbol_name(VM& vm, Value args);
 
 Value make_list(VM& vm);
 
@@ -217,14 +224,21 @@ public:
   SYM(import, "import") \
   SYM(core, "core") \
   SYM(quote, "quote") \
-  SYM(plus, "+") \
+  SYM(add, "+") \
+  SYM(sub, "-") \
+  SYM(mul, "*") \
+  SYM(div, "/") \
+  SYM(modulo, "modulo") \
   SYM(is_cons, "cons?") \
   SYM(cons, "cons") \
   SYM(first, "first") \
   SYM(rest, "rest") \
   SYM(is_symbol, "sym?") \
   SYM(is_equal, "eq?") \
-  SYM(is_nil, "nil?")
+  SYM(is_nil, "nil?") \
+  SYM(is_int, "int?") \
+  SYM(concat, "concat") \
+  SYM(symbol_name, "sym-name")
 
 #define SYM(cpp, lisp) Value cpp;
   SYM_LIST
@@ -252,6 +266,10 @@ public:
   Value symList;
   struct {
     Value builtin_add;
+    Value builtin_sub;
+    Value builtin_mul;
+    Value builtin_div;
+    Value builtin_modulo;
     Value builtin_is_cons;
     Value builtin_cons;
     Value builtin_first;
@@ -259,6 +277,9 @@ public:
     Value builtin_is_symbol;
     Value builtin_is_equal;
     Value builtin_is_nil;
+    Value builtin_is_int;
+    Value builtin_concat;
+    Value builtin_symbol_name;
   } objs;
 
   Syms syms;
@@ -282,6 +303,10 @@ public:
     false_->as_bool.value = false;
 
     objs.builtin_add = make_builtin(vm, "add", builtin_add);
+    objs.builtin_sub = make_builtin(vm, "sub", builtin_sub);
+    objs.builtin_mul = make_builtin(vm, "mul", builtin_mul);
+    objs.builtin_div = make_builtin(vm, "div", builtin_div);
+    objs.builtin_modulo = make_builtin(vm, "modulo", builtin_modulo);
     objs.builtin_is_cons = make_builtin(vm, "is_cons", builtin_is_cons);
     objs.builtin_cons = make_builtin(vm, "cons", builtin_cons);
     objs.builtin_first = make_builtin(vm, "first", builtin_first);
@@ -289,16 +314,26 @@ public:
     objs.builtin_is_symbol = make_builtin(vm, "is_symbol", builtin_is_symbol);
     objs.builtin_is_equal = make_builtin(vm, "is_equal", builtin_is_equal);
     objs.builtin_is_nil = make_builtin(vm, "is_nil", builtin_is_nil);
+    objs.builtin_is_int = make_builtin(vm, "is_int", builtin_is_int);
+    objs.builtin_concat = make_builtin(vm, "concat", builtin_concat);
+    objs.builtin_symbol_name = make_builtin(vm, "concat", builtin_symbol_name);
 
     core_imports = make_list(vm,
-      make_cons(vm, syms.plus, objs.builtin_add),
+      make_cons(vm, syms.add, objs.builtin_add),
+      make_cons(vm, syms.sub, objs.builtin_sub),
+      make_cons(vm, syms.mul, objs.builtin_mul),
+      make_cons(vm, syms.div, objs.builtin_div),
+      make_cons(vm, syms.modulo, objs.builtin_modulo),
       make_cons(vm, syms.is_cons, objs.builtin_is_cons),
       make_cons(vm, syms.cons, objs.builtin_cons),
       make_cons(vm, syms.first, objs.builtin_first),
       make_cons(vm, syms.rest, objs.builtin_rest),
       make_cons(vm, syms.is_symbol, objs.builtin_is_symbol),
       make_cons(vm, syms.is_equal, objs.builtin_is_equal),
-      make_cons(vm, syms.is_nil, objs.builtin_is_nil));
+      make_cons(vm, syms.is_nil, objs.builtin_is_nil),
+      make_cons(vm, syms.is_int, objs.builtin_is_int),
+      make_cons(vm, syms.concat, objs.builtin_concat),
+      make_cons(vm, syms.symbol_name, objs.builtin_symbol_name));
   }
 
   ~VM() {
@@ -637,6 +672,55 @@ Value builtin_add(VM& vm, Value args) {
   return make_integer(vm, res);
 }
 
+Value builtin_sub(VM& vm, Value args) {
+  int res;
+  if(!args.isNil()) {
+    Value a = cons_first(vm, args);
+    args = cons_rest(vm, args);
+    if(args.isNil()) {
+      return make_integer(vm, -integer_value(a));
+    }
+    res = integer_value(a);
+  }
+  while(!args.isNil()) {
+    Value a = cons_first(vm, args);
+    args = cons_rest(vm, args);
+    res -= integer_value(a);
+  }
+  return make_integer(vm, res);
+}
+
+Value builtin_mul(VM& vm, Value args) {
+  int res = 1;
+  while(!args.isNil()) {
+    Value a = cons_first(vm, args);
+    args = cons_rest(vm, args);
+    res *= integer_value(a);
+  }
+  return make_integer(vm, res);
+}
+
+Value builtin_div(VM& vm, Value args) {
+  EXPECT(!args.isNil());
+  int res = integer_value(cons_first(vm, args));
+  args = cons_rest(vm, args);
+  while(!args.isNil()) {
+    Value a = cons_first(vm, args);
+    args = cons_rest(vm, args);
+    res /= integer_value(a);
+  }
+  return make_integer(vm, res);
+}
+
+Value builtin_modulo(VM& vm, Value args) {
+  Value a = cons_first(vm, args);
+  args = cons_rest(vm, args);
+  Value b = cons_first(vm, args);
+  VM_EXPECT(vm, cons_rest(vm, args).isNil());
+  return make_integer(vm,
+    integer_value(a) % integer_value(b));
+}
+
 Value builtin_is_cons(VM& vm, Value args) {
   Value arg = cons_first(vm, args);
   VM_EXPECT(vm, cons_rest(vm, args).isNil());
@@ -683,8 +767,74 @@ Value builtin_is_nil(VM& vm, Value args) {
   return arg.isNil() ? vm.true_ : vm.false_;
 }
 
+Value builtin_is_int(VM& vm, Value args) {
+  Value arg = cons_first(vm, args);
+  VM_EXPECT(vm, cons_rest(vm, args).isNil());
+  return arg.isInteger() ? vm.true_ : vm.false_;
+}
+
+class StringBuffer {
+public:
+  size_t bufCapacity;
+  char* buf;
+  size_t used;
+
+  StringBuffer():
+    bufCapacity(10),
+    buf((char*)malloc(bufCapacity)),
+    used(0)
+  {
+    buf[0] = '\0';
+  }
+
+  ~StringBuffer() {
+    free(buf);
+  }
+
+  void ensure(size_t len) {
+    if(len + used + 1 > bufCapacity) {
+      buf = (char*) realloc(buf, bufCapacity = (len + used + 1) * 2);
+    }
+  }
+
+  void append(const char* text) {
+    size_t len = strlen(text);
+    ensure(len);
+    memcpy(buf + used, text, len + 1);
+    used += len;
+  }
+
+  void append(char ch) {
+    ensure(1);
+    buf[used++] = ch;
+    buf[used] = 0;
+  }
+
+  char* str() {
+    char* d = (char*) malloc(used + 1);
+    memcpy(d, buf, used + 1);
+    return d;
+  }
+};
+
+Value builtin_concat(VM& vm, Value args) {
+  StringBuffer buf;
+  while(!args.isNil()) {
+    Value a = cons_first(vm, args);
+    args = cons_rest(vm, args);
+    buf.append(string_value(a));
+  }
+  return make_string(vm, buf.str());
+}
+
+Value builtin_symbol_name(VM& vm, Value args) {
+  Value arg = cons_first(vm, args);
+  VM_EXPECT(vm, cons_rest(vm, args).isNil());
+  return make_string(vm, symbol_name(arg));
+}
+
 bool is_self_evaluating(Value o) {
-  return o.isInteger() || o.isNil() || o.isBuiltin() || o.isBool() || o.isLambda();
+  return o.isInteger() || o.isNil() || o.isBuiltin() || o.isBool() || o.isLambda() || o.isString();
 }
 
 Value extend_env(VM& vm, Value params, Value args, Value env) {
@@ -825,7 +975,7 @@ bool is_digit(int ch) {
 }
 
 bool is_sym_char(int ch) {
-  return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '?' || ch == '+' || ch == '-';
+  return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '?' || ch == '+' || ch == '-' || ch == '/' || ch == '*';
 }
 
 static Value parse_value(VM& vm, const char** text);
@@ -839,6 +989,51 @@ static Value parse_list(VM& vm, const char** text) {
     Value first = parse_value(vm, text);
     Value rest = parse_list(vm, text);
     return make_cons(vm, first, rest);
+  }
+}
+
+static Value parse_string(VM& vm, const char** text) {
+  StringBuffer buf;
+  (*text)++;
+  bool escape = false;
+  while(true) {
+    char ch = **text;
+    (*text)++;
+    if(escape) {
+      escape = false;
+      switch(ch) {
+      case '\0':
+        fprintf(stderr, "unterminated string\n");
+        EXPECT(0);
+        return 0;
+      case '\\':
+      case '"':
+        buf.append(ch);
+        break;
+      case 'n':
+        buf.append('\n');
+        break;
+      default:
+        fprintf(stderr, "bad escape: \\%c\n", ch);
+        EXPECT(0);
+        return 0;
+      }
+    } else {
+      switch(ch) {
+      case '\0':
+        fprintf(stderr, "unterminated string\n");
+        EXPECT(0);
+        return 0;
+      case '\\':
+        escape = true;
+        break;
+      case '"':
+        return make_string(vm, buf.str());
+      default:
+        buf.append(ch);
+        break;
+      }
+    }
   }
 }
 
@@ -872,6 +1067,8 @@ static Value parse_value(VM& vm, const char** text) {
       (*text)++;
     }
     return make_symbol_with_length(vm, start, *text - start);
+  } else if(**text == '"') {
+    return parse_string(vm, text);
   } else {
     fprintf(stderr, "problem near [[[%s]]]\n", *text);
     EXPECT(0);
@@ -956,6 +1153,11 @@ void testParse() {
   }
 
   {
+    Value res = parse(vm, "\"a\"");
+    EXPECT(obj_equal(res, make_string(vm, "a")));
+  }
+
+  {
     Value res = parse(vm, "(a b)");
     Value a = make_symbol(vm, "a");
     Value b = make_symbol(vm, "b");
@@ -968,7 +1170,7 @@ void testParse() {
 void testEval() {
   VM vm;
 
-  Value plus = vm.syms.plus;
+  Value plus = vm.syms.add;
   Value add = vm.objs.builtin_add;
   Value _if = vm.syms.if_;
   Value _true = vm.true_;
@@ -1018,7 +1220,7 @@ void testParseAndEval() {
   VM vm;
 
   {
-    Value plus = vm.syms.plus;
+    Value plus = vm.syms.add;
     Value add = vm.objs.builtin_add;
 
     Value pair = make_cons(vm, plus, add);
