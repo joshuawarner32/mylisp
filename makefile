@@ -6,7 +6,11 @@ objects = $(foreach x,$(sources),$(patsubst src/%.c,build/%.c.o,$(x)))
 
 executable = build/mylisp
 
-.PHONY: boot test cloc
+.PHONY: run boot test cloc
+
+run: $(executable) test
+	echo "running"
+	${<} src/boot.ss src/test.ss
 
 boot: $(executable) test
 	echo "booting"
