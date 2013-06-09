@@ -737,11 +737,8 @@ Value eval_list(VM& vm, Value o, Map env) {
 }
 
 Value eval(VM& vm, Value o, Map env) {
-  EvalFrame frame(vm, o, env);
-  // Value procedure;
-  // Value arguments;
-  // Value result;
   while(true) {
+    EvalFrame frame(vm, o, env);
     if(is_self_evaluating(o)) {
       return o;
     } else if(o.isSymbol()) {
@@ -787,12 +784,12 @@ Value eval(VM& vm, Value o, Map env) {
           env = extend_env(vm, lambda_params(f), params, lambda_env(f));
           o = lambda_body(f);
         } else {
-          EXPECT(0);
+          VM_ERROR(vm, "calling non-function value");
           return 0;
         }
       }
     } else {
-      VM_ERROR(vm, "unknown value");
+      VM_ERROR(vm, "unknown value type");
       return 0;
     }
   }
@@ -1102,10 +1099,10 @@ int main(int argc, char** argv) {
 
     Value quoted_input = make_list(vm, vm.syms.quote, input);
     Value transformed = eval(vm, make_list(vm, transformer, quoted_input), vm.nil);
+    obj_print(transformed);
 
     Value result = eval(vm, transformed, vm.nil);
     debug_print(result);
-    obj_print(transformed);
 
   }
   return 0;

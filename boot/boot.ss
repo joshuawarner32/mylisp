@@ -2,7 +2,68 @@
   (((some-random-symbol + cons? cons first rest nil? eq?) 
       (letlambdas 
         (((transform program) 
-            (transform-imports program ())) 
+            (transform-lets 
+              (transform-imports program ()))) 
+          ((transform-lets program) 
+            (if 
+              (nil? program) () 
+              (cons 
+                (transform-let 
+                  (first program)) 
+                (transform-lets 
+                  (rest program))))) 
+          ((transform-let form) 
+            (if 
+              (cons? form) 
+              (if 
+                (eq? 
+                  (first form) 
+                  (quote let)) 
+                (cons 
+                  (quote letlambdas) 
+                  (cons 
+                    (let-fn 
+                      (rest form)) 
+                    (cons 
+                      (let-body 
+                        (rest form)) ()))) 
+                (cons 
+                  (transform-let 
+                    (first form)) 
+                  (transform-lets 
+                    (rest form)))) form)) 
+          ((let-body form) 
+            (cons 
+              (quote current-let) 
+              (seconds 
+                (first form)))) 
+          ((let-fn form) 
+            (cons 
+              (cons 
+                (cons 
+                  (quote current-let) 
+                  (firsts 
+                    (first form))) 
+                (cons 
+                  (first 
+                    (rest form)) ())) ())) 
+          ((seconds val) 
+            (if 
+              (nil? val) () 
+              (cons 
+                (first 
+                  (rest 
+                    (first val))) 
+                (seconds 
+                  (rest val))))) 
+          ((firsts val) 
+            (if 
+              (nil? val) () 
+              (cons 
+                (first 
+                  (first val)) 
+                (firsts 
+                  (rest val))))) 
           ((write-imports body imports) 
             (cons 
               (quote letlambdas) 
@@ -49,16 +110,17 @@
                 (write-imports 
                   (transform-defines program) imports)))) 
           ((transform-defines program) 
-            ((letlambdas 
-                (((mylet res) 
+            (letlambdas 
+              (((current-let res) 
+                  (cons 
+                    (quote letlambdas) 
                     (cons 
-                      (quote letlambdas) 
+                      (first res) 
                       (cons 
-                        (first res) 
-                        (cons 
-                          (rest res) ()))))) mylet) 
-              (internal-transform-defines program 
-                (cons () ())))) 
+                        (rest res) ()))))) 
+              (current-let 
+                (internal-transform-defines program 
+                  (cons () ()))))) 
           ((transform-define def new-program) 
             (if 
               (cons? def) 
