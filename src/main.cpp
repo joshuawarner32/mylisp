@@ -1086,33 +1086,85 @@ Value run_file(VM& vm, const char* file, bool multiexpr) {
   return eval(vm, obj, vm.nil);
 }
 
+Value run_transform_file(VM& vm, const char* trans_file, const char* file) {
+  Value transformer = run_file(vm, trans_file, false);
+  Value input = parse_file(vm, file, true);
+
+  Value quoted_input = make_list(vm, vm.syms.quote, input);
+  Value transformed = eval(vm, make_list(vm, transformer, quoted_input), vm.nil);
+  return transformed;
+}
+
 int main(int argc, char** argv) {
-  if(argc == 2) {
-    if(strcmp(argv[1], "--test") == 0) {
-      testAll();
+  bool test = false;
+  const char* transform_file = 0;
+  const char* transformer = 0;
+  const char* run = 0;
+
+  enum {
+    START,
+    TRANSFORM_FILE,
+    TRANSFORMER,
+  } state;
+  for(int i = 1; i < argc; i++) {
+    const char* arg = argv[i];
+    switch(state) {
+    case START:
+      if(strcmp(arg, "--transform-file") == 0) {
+        state = TRANSFORM_FILE;
+      } else if(strcmp(arg, "--transformer") == 0) {
+        state = TRANSFORMER;
+      } else if(strcmp(arg, "--test") == 0) {
+        test = true;
+      } else {
+        run = arg;
+        state = START;
+      }
+      break;
+    case TRANSFORM_FILE:
+      transform_file = arg;
+      state = START;
+      break;
+    case TRANSFORMER:
+      transformer = arg;
+      state = START;
+      break;
+    }
+  }
+
+  
+
+  if(state != START) {
+    fprintf(stderr, "couldn't parse arguments\n");
+  } else {
+    if(test) {
+      if(transformer || run || transform_file) {
+        fprintf(stderr, "can't provide both --test and (--transform-file or --transformer or file to run)\n");
+      } else {
+        testAll();
+        return 0;
+      }
+    } else if(!transformer) {
+      fprintf(stderr, "must provide --transformer\n");
+    } else if(transform_file) {
+      if(run) {
+        fprintf(stderr, "can't provide both --transform-file and file to run\n");
+      } else {
+        VM vm;
+        Value transformed = run_transform_file(vm, transformer, transform_file);
+        obj_print(transformed);
+        return 0;
+      }
+    } else if(run) {
+      VM vm;
+      Value transformed = run_transform_file(vm, transformer, run);
+      Value result = eval(vm, transformed, vm.nil);
+      obj_print(result);
       return 0;
     } else {
-      VM vm;
-
-      Value result = run_file(vm, argv[1], false);
-
-      debug_print(result);
-
+      fprintf(stderr, "must provide either --transform-file or file to run\n");
     }
-  } else if(argc == 3) {
-    VM vm;
-
-    Value transformer = run_file(vm, argv[1], false);
-    Value input = parse_file(vm, argv[2], true);
-
-    Value quoted_input = make_list(vm, vm.syms.quote, input);
-    Value transformed = eval(vm, make_list(vm, transformer, quoted_input), vm.nil);
-    obj_print(transformed);
-
-    Value result = eval(vm, transformed, vm.nil);
-    debug_print(result);
-
   }
-  return 0;
+  return 1;
 }
 

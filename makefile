@@ -10,14 +10,22 @@ executable = build/mylisp
 
 run: $(executable) test
 	echo "running"
-	${<} boot/boot.ss src/test.ss
+	${<} --transformer boot/boot.ss src/test.ss
 
-boot: $(executable) test
-	echo "booting 1"
-	${<} boot/boot.ss src/boot.ss > build/boot-1.ss
-	echo "booting 2"
-	${<} build/boot-1.ss src/boot.ss > build/boot-2.ss
-	diff -wuq build/boot-1.ss build/boot-2.ss && cp build/boot-2.ss boot/boot.ss && echo "success"
+boot: build/boot-1/boot.ss build/boot-2/boot.ss
+	diff -wuq ${^}
+	cp build/boot-2/boot.ss boot/boot.ss
+
+define do-boot
+	mkdir -p $(dir ${@})
+	echo "booting ${@}"
+	${<} --transformer $(word 2, ${^}) --transform-file $(word 3, ${^}) > ${@}
+endef
+
+build/boot-1/boot.ss: $(executable) boot/boot.ss src/boot.ss
+	$(do-boot)
+build/boot-2/boot.ss: $(executable) build/boot-1/boot.ss src/boot.ss
+	$(do-boot)
 
 test: $(executable)
 	echo "running tests"
