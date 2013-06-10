@@ -40,9 +40,6 @@ Value make_list(VM& vm);
 template<class T, class... TS>
 Value make_list(VM& vm, T t, TS... ts);
 
-void obj_print(Value value, int indent = 0, FILE* stream = stdout);
-
-
 void* Object::operator new (size_t size, VM& vm) {
   return vm.alloc(size);
 }
@@ -67,7 +64,6 @@ void EvalFrame::dump(StandardStream stream) {
   FILE* f = streamToFile(stream);
   static const char prefix[] = "evaluating ";
   fprintf(f, prefix);
-  // obj_print(evaluating, strlen(prefix) / 2, f);
   vm.print(evaluating, strlen(prefix), stream);
   Value end = previous ? previous->env : vm.nil;
   while(!env.isNil() && env != end) {
@@ -82,7 +78,6 @@ void EvalFrame::dump(StandardStream stream) {
       ASSERT(key.isSymbol());
       const char* name = key->as_symbol.name;
       int len = fprintf(f, "    where %s = ", name);
-      // obj_print(value, len / 2, f);
       vm.print(value, len, stream);
     }
   }
@@ -282,70 +277,6 @@ bool obj_mentions_symbol(Value obj, Value symbol) {
   } else {
     return false;
   }
-}
-
-bool print_value(Value value, int indent, bool list_on_newline, FILE* stream);
-bool print_list(Value value, int indent, bool list_on_newline, FILE* stream) {
-  switch(value->type) {
-  case Object::Type::Nil:
-    fprintf(stream, ")");
-    return false;
-  case Object::Type::Cons:
-    fprintf(stream, " ");
-    print_value(value->as_cons.first, indent, true, stream);
-    print_list(value->as_cons.rest, indent, true, stream);
-    return true;
-  default:
-    fprintf(stream, " . ");
-    print_value(value, indent, true, stream);
-    fprintf(stream, ")");
-    return true;
-  }
-}
-
-bool print_value(Value value, int indent, bool list_on_newline, FILE* stream) {
-  switch(value->type) {
-  case Object::Type::Nil:
-    fprintf(stream, "()");
-    return false;
-  case Object::Type::Cons:
-    if(list_on_newline) {
-      fprintf(stream, "\n%*s", indent * 2, "");
-    }
-    fprintf(stream, "(");
-    print_value(value->as_cons.first, indent + 1, false, stream);
-    return print_list(value->as_cons.rest, indent + 1, true, stream);
-  case Object::Type::String:
-    fprintf(stream, "\"%s\"", string_value(value));
-    return false;
-  case Object::Type::Integer:
-    fprintf(stream, "%d", integer_value(value));
-    return false;
-  case Object::Type::Symbol:
-    fprintf(stream, "%s", symbol_name(value));
-    return false;
-  case Object::Type::Builtin:
-    fprintf(stream, "<builtin:%s>", builtin_name(value));
-    return false;
-  case Object::Type::Bool:
-    fprintf(stream, "%s", bool_value(value) ? "#t" : "#f");
-    return false;
-  case Object::Type::Lambda:
-    fprintf(stream, "<lambda@%p>", value.getObj());
-    return false;
-  default:
-    EXPECT(0);
-    return false;
-  }
-}
-
-void obj_print(Value value, int indent, FILE* stream) {
-  print_value(value, indent, false, stream);
-  fprintf(stream, "\n");
-}
-
-void debug_print(Value value) {
-  obj_print(value, 0, stderr);
 }
 
 Value builtin_add(VM& vm, Value args) {
@@ -980,19 +911,8 @@ Value run_file(VM& vm, const char* file, bool multiexpr) {
 }
 
 Value run_transform_file(VM& vm, const char* file) {
-
   Transformer t(vm);
-
-  // obj_print(transformer, 0, stderr);
-  // obj_print(t.data, 0, stderr);
-  // EXPECT(obj_equal(transformer, t.data));
-
   return t.transform(parse_file(vm, file, true));
-  // Value input = parse_file(vm, file, true);
-
-  // Value quoted_input = make_list(vm, vm.syms.quote, input);
-  // Value transformed = eval(vm, make_list(vm, transformer, quoted_input), vm.nil);
-  // return transformed;
 }
 
 int main(int argc, char** argv) {
@@ -1062,7 +982,7 @@ int main(int argc, char** argv) {
           Data data = serialize(transformed);
           saveBytes(serialize_to, data);
         } else {
-          obj_print(transformed);
+          vm.print(transformed);
         }
         return 0;
       }
@@ -1076,7 +996,7 @@ int main(int argc, char** argv) {
       const char* data = loadBytes(deserialize_from);
       VM vm;
       Value value = deserialize(vm, data);
-      obj_print(value);
+      vm.print(value);
       return 0;
     } else if(file) {
       VM vm;
