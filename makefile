@@ -10,24 +10,31 @@ executable = build/mylisp
 
 run: $(executable) test
 	echo "running"
-	${<} --transformer boot/boot.ss src/prettyprint.ss
+	${<} src/prettyprint.ss
 
-boot: build/boot-1/boot.ss build/boot-2/boot.ss
-	diff -wuq ${^}
-	cp build/boot-2/boot.ss boot/boot.ss
+boot: build/boot-1/boot.ss.bin build/boot-2/boot.ss.bin
+	diff -q ${^}
+	cp build/boot-2/boot.ss.bin boot/boot.ss.bin
 
 define do-boot
 	mkdir -p $(dir ${@})
-	echo "booting ${@}"
-	${<} --transformer $(word 2, ${^}) --transform-file $(word 3, ${^}) > ${@}
-	echo "serializing ${@}.bin"
-	${<} --serialize ${@}.bin ${@}
+	echo "writing ${@}"
+	${<} --transform-file $(word 3, ${^}) --serialize ${@}
 endef
 
-build/boot-1/boot.ss: $(executable) boot/boot.ss src/boot.ss
+build/boot-1/boot.ss.bin: $(executable) boot/boot.ss.bin src/boot.ss
 	$(do-boot)
-build/boot-2/boot.ss: $(executable) build/boot-1/boot.ss src/boot.ss
+build/boot-2/boot.ss.bin: $(executable) build/boot-1/boot.ss.bin src/boot.ss
 	$(do-boot)
+
+build/boot-data.c: boot/boot.ss.bin
+	mkdir -p $(dir ${@})
+	echo "const char binary_boot_data[] = {" > ${@}
+	xxd -i < ${<} >> ${@}
+	echo "};" >> ${@}
+
+build/boot-data.o: build/boot-data.c
+	clang ${<} -c -o ${@}
 
 test: $(executable)
 	echo "running tests"
@@ -37,7 +44,7 @@ cloc: $(wildcard src/*.cpp) $(wildcard src/*.h)
 	printf "lines of c++: "
 	(cloc $(^) --quiet --sql=-; echo "select sum(nCode) from t where Language in ('C++', 'C/C++ Header');")|sqlite3 :memory:
 
-$(executable): $(objects)
+$(executable): $(objects) build/boot-data.o
 	mkdir -p $(dir ${@})
 	printf "linking   %12s %12s      %12s %12s\n" "" "" $(dir ${@}) $(notdir ${@})
 	clang++ -O0 -g3 -o ${@} ${^}

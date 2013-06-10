@@ -7,6 +7,7 @@
 
 #include "serialize.h"
 #include "vm.h"
+#include "transform.h"
 
 void _assert_failed(const char* file, int line, const char* message, ...) {
   fprintf(stderr, "assertion failure, %s:%d:\n  ", file, line);
@@ -889,11 +890,50 @@ void testParseAndEval() {
 
 }
 
+void testSerialize() {
+  VM vm;
+
+  {
+    Value original = vm.nil;
+    Data serialized = serialize(original);
+    Value deserialized = deserialize(vm, serialized.data);
+    EXPECT(obj_equal(deserialized, original));
+  }
+
+  {
+    Value original = make_integer(vm, 0);
+    Data serialized = serialize(original);
+    Value deserialized = deserialize(vm, serialized.data);
+    EXPECT(obj_equal(deserialized, original));
+  }
+
+  {
+    Value original = make_integer(vm, 1);
+    Data serialized = serialize(original);
+    Value deserialized = deserialize(vm, serialized.data);
+    EXPECT(obj_equal(deserialized, original));
+  }
+
+  {
+    Value a = make_symbol(vm, "some-random-symbol");
+    Value original = make_list(vm, a,
+      make_integer(vm, 1),
+      make_integer(vm, 42),
+      make_integer(vm, 129),
+      make_integer(vm, 4),
+      make_integer(vm, 5));
+    Data serialized = serialize(original);
+    Value deserialized = deserialize(vm, serialized.data);
+    EXPECT(obj_equal(deserialized, original));
+  }
+}
+
 void testAll() {
   testMakeList();
   testParse();
   testEval();
   testParseAndEval();
+  testSerialize();
 }
 
 char* loadBytes(const char* file) {
@@ -934,19 +974,25 @@ Value run_file(VM& vm, const char* file, bool multiexpr) {
   return eval(vm, obj, vm.nil);
 }
 
-Value run_transform_file(VM& vm, const char* trans_file, const char* file) {
-  Value transformer = run_file(vm, trans_file, false);
-  Value input = parse_file(vm, file, true);
+Value run_transform_file(VM& vm, const char* file) {
 
-  Value quoted_input = make_list(vm, vm.syms.quote, input);
-  Value transformed = eval(vm, make_list(vm, transformer, quoted_input), vm.nil);
-  return transformed;
+  Transformer t(vm);
+
+  // obj_print(transformer, 0, stderr);
+  // obj_print(t.data, 0, stderr);
+  // EXPECT(obj_equal(transformer, t.data));
+
+  return t.transform(parse_file(vm, file, true));
+  // Value input = parse_file(vm, file, true);
+
+  // Value quoted_input = make_list(vm, vm.syms.quote, input);
+  // Value transformed = eval(vm, make_list(vm, transformer, quoted_input), vm.nil);
+  // return transformed;
 }
 
 int main(int argc, char** argv) {
   bool test = false;
   const char* transform_file = 0;
-  const char* transformer = 0;
   const char* file = 0;
   const char* serialize_to = 0;
   const char* deserialize_from = 0;
@@ -955,7 +1001,6 @@ int main(int argc, char** argv) {
   enum {
     START,
     TRANSFORM_FILE,
-    TRANSFORMER,
     SERIALIZE,
     DESERIALIZE,
   } state = START;
@@ -966,8 +1011,6 @@ int main(int argc, char** argv) {
     case START:
       if(strcmp(arg, "--transform-file") == 0) {
         state = TRANSFORM_FILE;
-      } else if(strcmp(arg, "--transformer") == 0) {
-        state = TRANSFORMER;
       } else if(strcmp(arg, "--test") == 0) {
         test = true;
       } else if(strcmp(arg, "--serialize") == 0) {
@@ -981,10 +1024,6 @@ int main(int argc, char** argv) {
       break;
     case TRANSFORM_FILE:
       transform_file = arg;
-      state = START;
-      break;
-    case TRANSFORMER:
-      transformer = arg;
       state = START;
       break;
     case SERIALIZE:
@@ -1002,10 +1041,24 @@ int main(int argc, char** argv) {
     fprintf(stderr, "couldn't parse arguments %d\n", state);
   } else {
     if(test) {
-      if(transformer || file || transform_file) {
-        fprintf(stderr, "can't provide both --test and (--transform-file or --transformer or file to run)\n");
+      if(file || transform_file) {
+        fprintf(stderr, "can't provide both --test and (--transform-file or file to run)\n");
       } else {
         testAll();
+        return 0;
+      }
+    } else if(transform_file) {
+      if(file) {
+        fprintf(stderr, "can't provide both --transform-file and file to run\n");
+      } else {
+        VM vm;
+        Value transformed = run_transform_file(vm, transform_file);
+        if(serialize_to) {
+          Data data = serialize(transformed);
+          saveBytes(serialize_to, data);
+        } else {
+          obj_print(transformed);
+        }
         return 0;
       }
     } else if(serialize_to) {
@@ -1015,25 +1068,14 @@ int main(int argc, char** argv) {
       saveBytes(serialize_to, data);
       return 0;
     } else if(deserialize_from) {
-      const char* data = loadBytes(file);
+      const char* data = loadBytes(deserialize_from);
       VM vm;
       Value value = deserialize(vm, data);
       obj_print(value);
       return 0;
-    } else if(!transformer) {
-      fprintf(stderr, "must provide --transformer\n");
-    } else if(transform_file) {
-      if(file) {
-        fprintf(stderr, "can't provide both --transform-file and file to run\n");
-      } else {
-        VM vm;
-        Value transformed = run_transform_file(vm, transformer, transform_file);
-        obj_print(transformed);
-        return 0;
-      }
     } else if(file) {
       VM vm;
-      Value transformed = run_transform_file(vm, transformer, file);
+      Value transformed = run_transform_file(vm, file);
       Value result = eval(vm, transformed, vm.nil);
       obj_print(result);
       return 0;

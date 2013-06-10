@@ -43,7 +43,7 @@ char* StringBuffer::str() {
 
 void writeInt(StringBuffer& buf, int value) {
   while(true) {
-    int bits = value & 0xef;
+    int bits = value & 0x7f;
     value >>= 7;
     if(value) {
       bits |= 0x80;
@@ -60,8 +60,8 @@ int readInt(const char*& data) {
   int shift = 0;
   while(true) {
     int bits = *(data++);
+    ret |= ((bits & 0x7f) << shift);
     if(bits & 0x80) {
-      ret = ret | ((bits & 0xef) << shift);
       shift += 7;
     } else {
       return ret;
@@ -93,10 +93,11 @@ void serializeTo(StringBuffer& buf, Value value) {
     writeInt(buf, strlen(data));
     buf.append(data);
   } return;
-  case Object::Type::Integer:
+  case Object::Type::Integer: {
     buf.append(SerializedData::INTEGER);
-    writeInt(buf, integer_value(value));
-    return;
+    int v = integer_value(value);
+    writeInt(buf, v);
+  } return;
   case Object::Type::Symbol: {
     buf.append(SerializedData::SYMBOL);
     const char* data = symbol_name(value);
@@ -129,13 +130,16 @@ Data serialize(Value value) {
 }
 
 Value deserializeFrom(VM& vm, const char*& data) {
+  static int depth = 0;
   char ch = *(data++);
   switch(ch) {
   case SerializedData::NIL:
     return vm.nil;
   case SerializedData::CONS: {
+    depth++;
     Value first = deserializeFrom(vm, data);
     Value rest = deserializeFrom(vm, data);
+    depth--;
     return make_cons(vm, first, rest);
   } break;
   case SerializedData::STRING: {
