@@ -12,28 +12,27 @@ run: $(executable) test
 	echo "running"
 	${<} src/prettyprint.ss
 
-boot: build/boot-1/boot.ss.bin build/boot-2/boot.ss.bin
-	diff -q ${^}
-	cp build/boot-2/boot.ss.bin boot/boot.ss.bin
+boot: build/boot-1/boot.ss.bin build/boot-1/prettyprint.ss.bin
+	cp build/boot-1/boot.ss.bin build/boot-1/prettyprint.ss.bin boot
 
-define do-boot
+build/boot-1/%.ss.bin: $(executable) src/%.ss
 	mkdir -p $(dir ${@})
 	echo "writing ${@}"
-	${<} --transform-file $(word 3, ${^}) --serialize ${@}
-endef
+	${<} --transform-file $(word 2, ${^}) --serialize ${@}
 
-build/boot-1/boot.ss.bin: $(executable) boot/boot.ss.bin src/boot.ss
-	$(do-boot)
-build/boot-2/boot.ss.bin: $(executable) build/boot-1/boot.ss.bin src/boot.ss
-	$(do-boot)
-
-build/boot-data.c: boot/boot.ss.bin
+build/boot-data.gen.c: boot/boot.ss.bin
 	mkdir -p $(dir ${@})
 	echo "const char binary_boot_data[] = {" > ${@}
 	xxd -i < ${<} >> ${@}
 	echo "};" >> ${@}
 
-build/boot-data.o: build/boot-data.c
+build/prettyprint-data.gen.c: boot/prettyprint.ss.bin
+	mkdir -p $(dir ${@})
+	echo "const char binary_prettyprint_data[] = {" > ${@}
+	xxd -i < ${<} >> ${@}
+	echo "};" >> ${@}
+
+%.o: %.gen.c
 	clang ${<} -c -o ${@}
 
 test: $(executable)
@@ -44,7 +43,7 @@ cloc: $(wildcard src/*.cpp) $(wildcard src/*.h)
 	printf "lines of c++: "
 	(cloc $(^) --quiet --sql=-; echo "select sum(nCode) from t where Language in ('C++', 'C/C++ Header');")|sqlite3 :memory:
 
-$(executable): $(objects) build/boot-data.o
+$(executable): $(objects) build/boot-data.o build/prettyprint-data.o
 	mkdir -p $(dir ${@})
 	printf "linking   %12s %12s      %12s %12s\n" "" "" $(dir ${@}) $(notdir ${@})
 	clang++ -O0 -g3 -o ${@} ${^}
