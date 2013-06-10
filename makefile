@@ -20,6 +20,8 @@ define do-boot
 	mkdir -p $(dir ${@})
 	echo "booting ${@}"
 	${<} --transformer $(word 2, ${^}) --transform-file $(word 3, ${^}) > ${@}
+	echo "serializing ${@}.bin"
+	${<} --serialize ${@}.bin ${@}
 endef
 
 build/boot-1/boot.ss: $(executable) boot/boot.ss src/boot.ss

@@ -5,44 +5,8 @@
 #include <string.h>
 #include <stdarg.h>
 
-void _assert_failed(const char* file, int line, const char* message, ...);
-
-#define EXPECT(e) do { if(!(e)) {_assert_failed(__FILE__, __LINE__, "%s", #e);} } while(0)
-#define EXPECT_MSG(e, msg, ...) \
-  do { if(!(e)) {_assert_failed(__FILE__, __LINE__, "%s\n  " msg, #e, ##__VA_ARGS__);} } while(0)
-
-#define EXPECT_INT_EQ(expected, actual) \
-  EXPECT_MSG((expected) == (actual), "expected: %d, actual: %d", expected, actual);
-
-#define ENABLE_ASSERTS
-#define ENABLE_DUHS
-
-#ifdef ENABLE_ASSERTS
-#define ASSERT(...) EXPECT(__VA_ARGS__)
-#define ASSERT_MSG(...) EXPECT_MSG(__VA_ARGS__)
-#else
-#define ASSERT(...)
-#define ASSERT_MSG(...)
-#endif
-
-#ifdef ENABLE_DUHS
-#define DUH(...) EXPECT(__VA_ARGS__)
-#define DUH_MSG(...) EXPECT_MSG(__VA_ARGS__)
-#else
-#define DUH(...)
-#define DUH_MSG(...)
-#endif
-
-#define VM_ERROR(vm, message) \
-  vm.errorOccurred(__FILE__, __LINE__, message)
-
-#define VM_EXPECT(vm, expected) \
-  do { \
-    if(!expected) { \
-      VM_ERROR(vm, #expected); \
-    } \
-  } while(0)
-
+#include "serialize.h"
+#include "vm.h"
 
 void _assert_failed(const char* file, int line, const char* message, ...) {
   fprintf(stderr, "assertion failure, %s:%d:\n  ", file, line);
@@ -65,133 +29,9 @@ void _assert_failed(const char* file, int line, const char* message, ...) {
 #define DEBUG_LOG(val) val
 #endif
 
-class VM;
-
-class Value;
-
-typedef Value (*BuiltinFunc)(VM& vm, Value args);
-
-class Object {
-public:
-  enum class Type {
-    Nil,
-    Cons,
-    String,
-    Integer,
-    Symbol,
-    Builtin,
-    Bool,
-    Lambda
-  };
-
-  Type type;
-
-  union {
-    struct {
-      Object* first;
-      Object* rest;
-    } as_cons;
-    struct {
-      const char* value;
-    } as_string;
-    struct {
-      int value;
-    } as_integer;
-    struct {
-      const char* name;
-    } as_symbol;
-    struct {
-      const char* name;
-      BuiltinFunc func;
-    } as_builtin;
-    struct {
-      bool value;
-    } as_bool;
-    struct {
-      Object* params;
-      Object* body;
-      Object* env;
-    } as_lambda;
-  };
-
-  Object(Type type): type(type) {}
-
-  inline void* operator new (size_t size, VM& vm);
-};
-
-class Value {
-private:
-  Object* obj;
-
-public:
-  Value(): obj(0) {}
-  Value(Object* obj): obj(obj) {if(!obj) exit(1);}
-
-  inline Object*& getObj() { return obj; }
-  inline Object* operator -> () { return obj; }
-  inline bool operator == (const Value& other) const { return obj == other.obj; }
-  inline bool operator != (const Value& other) const { return obj != other.obj; }
-
-  inline bool isNil() const { return obj->type == Object::Type::Nil; }
-  inline bool isCons() const { return obj->type == Object::Type::Cons; }
-  inline bool isString() const { return obj->type == Object::Type::String; }
-  inline bool isInteger() const { return obj->type == Object::Type::Integer; }
-  inline bool isSymbol() const { return obj->type == Object::Type::Symbol; }
-  inline bool isBuiltin() const { return obj->type == Object::Type::Builtin; }
-  inline bool isBool() const { return obj->type == Object::Type::Bool; }
-  inline bool isLambda() const { return obj->type == Object::Type::Lambda; }
-
-  operator bool () const = delete;
-};
-
-
-typedef struct _heap_block_t {
-  struct _heap_block_t* next;
-  size_t capacity;
-  size_t used;
-  uint8_t* data;
-} heap_block_t;
-
-heap_block_t* make_heap_block(size_t size, heap_block_t* next) {
-  uint8_t* data = (uint8_t*) malloc(size);
-  heap_block_t* h = (heap_block_t*)(void*)data;
-  h->next = next;
-  h->capacity = size - sizeof(heap_block_t);
-  h->used = 0;
-  h->data = data + sizeof(heap_block_t);
-  return h;
-}
-
-void free_heap_block(heap_block_t* h) {
-  if(h->next) {
-    free_heap_block(h->next);
-  }
-  free(h);
-}
-
-size_t max_sizet(size_t a, size_t b) {
-  return a > b ? a : b;
-}
-
 Value make_symbol(VM& vm, const char* name);
 Value make_builtin(VM& vm, const char* name, BuiltinFunc func);
 Value make_cons(VM& vm, Value first, Value rest);
-
-Value builtin_add(VM& vm, Value args);
-Value builtin_sub(VM& vm, Value args);
-Value builtin_mul(VM& vm, Value args);
-Value builtin_div(VM& vm, Value args);
-Value builtin_modulo(VM& vm, Value args);
-Value builtin_is_cons(VM& vm, Value args);
-Value builtin_cons(VM& vm, Value args);
-Value builtin_first(VM& vm, Value args);
-Value builtin_rest(VM& vm, Value args);
-Value builtin_is_symbol(VM& vm, Value args);
-Value builtin_is_equal(VM& vm, Value args);
-Value builtin_is_nil(VM& vm, Value args);
-Value builtin_is_int(VM& vm, Value args);
-Value builtin_concat(VM& vm, Value args);
-Value builtin_symbol_name(VM& vm, Value args);
 
 Value make_list(VM& vm);
 
@@ -200,161 +40,6 @@ Value make_list(VM& vm, T t, TS... ts);
 
 void obj_print(Value value, int indent = 0, FILE* stream = stdout);
 
-class VM;
-
-class EvalFrame {
-public:
-  VM& vm;
-  Value evaluating;
-  Value env;
-  EvalFrame* previous;
-
-  EvalFrame(VM& vm, Value evaluating, Value env);
-
-  ~EvalFrame();
-
-  void dump(FILE* stream);
-};
-
-class Syms {
-public:
-#define SYM_LIST \
-  SYM(if_, "if") \
-  SYM(letlambdas, "letlambdas") \
-  SYM(import, "import") \
-  SYM(core, "core") \
-  SYM(quote, "quote") \
-  SYM(add, "+") \
-  SYM(sub, "-") \
-  SYM(mul, "*") \
-  SYM(div, "/") \
-  SYM(modulo, "modulo") \
-  SYM(is_cons, "cons?") \
-  SYM(cons, "cons") \
-  SYM(first, "first") \
-  SYM(rest, "rest") \
-  SYM(is_symbol, "sym?") \
-  SYM(is_equal, "eq?") \
-  SYM(is_nil, "nil?") \
-  SYM(is_int, "int?") \
-  SYM(concat, "concat") \
-  SYM(symbol_name, "sym-name")
-
-#define SYM(cpp, lisp) Value cpp;
-  SYM_LIST
-#undef SYM
-  int dummy_value;
-
-  Syms(VM& vm):
-#define SYM(cpp, lisp) cpp(make_symbol(vm, lisp)),
-  SYM_LIST
-#undef SYM
-  dummy_value(0) {}
-
-#undef SYM_LIST
-};
-
-class VM {
-public:
-  size_t heap_block_size;
-  heap_block_t* heap;
-
-  Value nil;
-  Value true_;
-  Value false_;
-
-  Value symList;
-  struct {
-    Value builtin_add;
-    Value builtin_sub;
-    Value builtin_mul;
-    Value builtin_div;
-    Value builtin_modulo;
-    Value builtin_is_cons;
-    Value builtin_cons;
-    Value builtin_first;
-    Value builtin_rest;
-    Value builtin_is_symbol;
-    Value builtin_is_equal;
-    Value builtin_is_nil;
-    Value builtin_is_int;
-    Value builtin_concat;
-    Value builtin_symbol_name;
-  } objs;
-
-  Syms syms;
-
-  Value core_imports;
-
-  EvalFrame* currentEvalFrame = 0;
-
-  VM(size_t heap_block_size = 4096):
-    heap_block_size(heap_block_size),
-    heap(make_heap_block(heap_block_size, 0)),
-    nil(new(*this) Object(Object::Type::Nil)),
-    true_(new (*this) Object(Object::Type::Bool)),
-    false_(new (*this) Object(Object::Type::Bool)),
-    symList(nil),
-    syms(*this)
-  {
-    VM& vm = *this;
-
-    true_->as_bool.value = true;
-    false_->as_bool.value = false;
-
-    objs.builtin_add = make_builtin(vm, "add", builtin_add);
-    objs.builtin_sub = make_builtin(vm, "sub", builtin_sub);
-    objs.builtin_mul = make_builtin(vm, "mul", builtin_mul);
-    objs.builtin_div = make_builtin(vm, "div", builtin_div);
-    objs.builtin_modulo = make_builtin(vm, "modulo", builtin_modulo);
-    objs.builtin_is_cons = make_builtin(vm, "is_cons", builtin_is_cons);
-    objs.builtin_cons = make_builtin(vm, "cons", builtin_cons);
-    objs.builtin_first = make_builtin(vm, "first", builtin_first);
-    objs.builtin_rest = make_builtin(vm, "rest", builtin_rest);
-    objs.builtin_is_symbol = make_builtin(vm, "is_symbol", builtin_is_symbol);
-    objs.builtin_is_equal = make_builtin(vm, "is_equal", builtin_is_equal);
-    objs.builtin_is_nil = make_builtin(vm, "is_nil", builtin_is_nil);
-    objs.builtin_is_int = make_builtin(vm, "is_int", builtin_is_int);
-    objs.builtin_concat = make_builtin(vm, "concat", builtin_concat);
-    objs.builtin_symbol_name = make_builtin(vm, "concat", builtin_symbol_name);
-
-    core_imports = make_list(vm,
-      make_cons(vm, syms.add, objs.builtin_add),
-      make_cons(vm, syms.sub, objs.builtin_sub),
-      make_cons(vm, syms.mul, objs.builtin_mul),
-      make_cons(vm, syms.div, objs.builtin_div),
-      make_cons(vm, syms.modulo, objs.builtin_modulo),
-      make_cons(vm, syms.is_cons, objs.builtin_is_cons),
-      make_cons(vm, syms.cons, objs.builtin_cons),
-      make_cons(vm, syms.first, objs.builtin_first),
-      make_cons(vm, syms.rest, objs.builtin_rest),
-      make_cons(vm, syms.is_symbol, objs.builtin_is_symbol),
-      make_cons(vm, syms.is_equal, objs.builtin_is_equal),
-      make_cons(vm, syms.is_nil, objs.builtin_is_nil),
-      make_cons(vm, syms.is_int, objs.builtin_is_int),
-      make_cons(vm, syms.concat, objs.builtin_concat),
-      make_cons(vm, syms.symbol_name, objs.builtin_symbol_name));
-  }
-
-  ~VM() {
-    free_heap_block(heap);
-  }
-
-  void* alloc(size_t size) {
-    if(size > heap->capacity - heap->used) {
-      heap = make_heap_block(max_sizet(heap_block_size, size * 2 + sizeof(heap_block_t)), heap);
-    }
-    void* ret = heap->data + heap->used;
-    heap->used += size;
-    return ret;
-  }
-
-  void errorOccurred(const char* file, int line, const char* message) {
-    fprintf(stderr, "error occurred: %s:%d: %s\n", file, line, message);
-    currentEvalFrame->dump(stderr);
-    exit(1);
-  }
-};
 
 void* Object::operator new (size_t size, VM& vm) {
   return vm.alloc(size);
@@ -411,11 +96,6 @@ Value make_cons(VM& vm, Value a, Value b) {
 
 Value make_list(VM& vm) {
   return vm.nil;
-}
-
-template<class T, class... TS>
-Value make_list(VM& vm, T t, TS... ts) {
-  return make_cons(vm, t, make_list(vm, ts...));
 }
 
 Value cons_first(VM& vm, Value o) {
@@ -772,50 +452,6 @@ Value builtin_is_int(VM& vm, Value args) {
   VM_EXPECT(vm, cons_rest(vm, args).isNil());
   return arg.isInteger() ? vm.true_ : vm.false_;
 }
-
-class StringBuffer {
-public:
-  size_t bufCapacity;
-  char* buf;
-  size_t used;
-
-  StringBuffer():
-    bufCapacity(10),
-    buf((char*)malloc(bufCapacity)),
-    used(0)
-  {
-    buf[0] = '\0';
-  }
-
-  ~StringBuffer() {
-    free(buf);
-  }
-
-  void ensure(size_t len) {
-    if(len + used + 1 > bufCapacity) {
-      buf = (char*) realloc(buf, bufCapacity = (len + used + 1) * 2);
-    }
-  }
-
-  void append(const char* text) {
-    size_t len = strlen(text);
-    ensure(len);
-    memcpy(buf + used, text, len + 1);
-    used += len;
-  }
-
-  void append(char ch) {
-    ensure(1);
-    buf[used++] = ch;
-    buf[used] = 0;
-  }
-
-  char* str() {
-    char* d = (char*) malloc(used + 1);
-    memcpy(d, buf, used + 1);
-    return d;
-  }
-};
 
 Value builtin_concat(VM& vm, Value args) {
   StringBuffer buf;
@@ -1260,8 +896,7 @@ void testAll() {
   testParseAndEval();
 }
 
-Value parse_file(VM& vm, const char* file, bool multiexpr) {
-
+char* loadBytes(const char* file) {
   FILE* f = fopen(file, "rb");
   fseek(f, 0, SEEK_END);
   size_t len = ftell(f);
@@ -1270,6 +905,17 @@ Value parse_file(VM& vm, const char* file, bool multiexpr) {
   fread(buf, 1, len, f);
   fclose(f);
   buf[len] = 0;
+  return buf;
+}
+
+void saveBytes(const char* file, Data data) {
+  FILE* f = fopen(file, "wb");
+  fwrite(data.data, 1, data.length, f);
+  fclose(f);
+}
+
+Value parse_file(VM& vm, const char* file, bool multiexpr) {
+  char* buf = loadBytes(file);
 
   Value obj;
   if(multiexpr) {
@@ -1301,13 +947,19 @@ int main(int argc, char** argv) {
   bool test = false;
   const char* transform_file = 0;
   const char* transformer = 0;
-  const char* run = 0;
+  const char* file = 0;
+  const char* serialize_to = 0;
+  const char* deserialize_from = 0;
+
 
   enum {
     START,
     TRANSFORM_FILE,
     TRANSFORMER,
-  } state;
+    SERIALIZE,
+    DESERIALIZE,
+  } state = START;
+
   for(int i = 1; i < argc; i++) {
     const char* arg = argv[i];
     switch(state) {
@@ -1318,8 +970,12 @@ int main(int argc, char** argv) {
         state = TRANSFORMER;
       } else if(strcmp(arg, "--test") == 0) {
         test = true;
+      } else if(strcmp(arg, "--serialize") == 0) {
+        state = SERIALIZE;
+      } else if(strcmp(arg, "--deserialize") == 0) {
+        state = DESERIALIZE;
       } else {
-        run = arg;
+        file = arg;
         state = START;
       }
       break;
@@ -1331,25 +987,43 @@ int main(int argc, char** argv) {
       transformer = arg;
       state = START;
       break;
+    case SERIALIZE:
+      serialize_to = arg;
+      state = START;
+      break;
+    case DESERIALIZE:
+      deserialize_from = arg;
+      state = START;
+      break;
     }
   }
 
-  
-
   if(state != START) {
-    fprintf(stderr, "couldn't parse arguments\n");
+    fprintf(stderr, "couldn't parse arguments %d\n", state);
   } else {
     if(test) {
-      if(transformer || run || transform_file) {
+      if(transformer || file || transform_file) {
         fprintf(stderr, "can't provide both --test and (--transform-file or --transformer or file to run)\n");
       } else {
         testAll();
         return 0;
       }
+    } else if(serialize_to) {
+      VM vm;
+      Value value = parse_file(vm, file, false);
+      Data data = serialize(value);
+      saveBytes(serialize_to, data);
+      return 0;
+    } else if(deserialize_from) {
+      const char* data = loadBytes(file);
+      VM vm;
+      Value value = deserialize(vm, data);
+      obj_print(value);
+      return 0;
     } else if(!transformer) {
       fprintf(stderr, "must provide --transformer\n");
     } else if(transform_file) {
-      if(run) {
+      if(file) {
         fprintf(stderr, "can't provide both --transform-file and file to run\n");
       } else {
         VM vm;
@@ -1357,9 +1031,9 @@ int main(int argc, char** argv) {
         obj_print(transformed);
         return 0;
       }
-    } else if(run) {
+    } else if(file) {
       VM vm;
-      Value transformed = run_transform_file(vm, transformer, run);
+      Value transformed = run_transform_file(vm, transformer, file);
       Value result = eval(vm, transformed, vm.nil);
       obj_print(result);
       return 0;
