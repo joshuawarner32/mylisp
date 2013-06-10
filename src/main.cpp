@@ -31,14 +31,7 @@ void _assert_failed(const char* file, int line, const char* message, ...) {
 #define DEBUG_LOG(val) val
 #endif
 
-Value make_symbol(VM& vm, const char* name);
 Value make_builtin(VM& vm, const char* name, BuiltinFunc func);
-Value make_cons(VM& vm, Value first, Value rest);
-
-Value make_list(VM& vm);
-
-template<class T, class... TS>
-Value make_list(VM& vm, T t, TS... ts);
 
 void* Object::operator new (size_t size, VM& vm) {
   return vm.alloc(size);
@@ -86,19 +79,6 @@ void EvalFrame::dump(StandardStream stream) {
   }
 }
 
-void debug_print(Value value);
-
-Value make_cons(VM& vm, Value a, Value b) {
-  Value o = new(vm) Object(Object::Type::Cons);
-  o->as_cons.first = a.getObj();
-  o->as_cons.rest = b.getObj();
-  return o;
-}
-
-Value make_list(VM& vm) {
-  return vm.nil;
-}
-
 Value cons_first(VM& vm, Value o) {
   VM_EXPECT(vm, o.isCons());
   return o->as_cons.first;
@@ -121,7 +101,7 @@ size_t list_length(Value list) {
 
 Value list_prepend_n_objs(VM& vm, size_t len, Value obj, Value list) {
   while(len > 0) {
-    list = make_cons(vm, obj, list);
+    list = vm.Cons(obj, list);
     len--;
   }
   return list;
@@ -185,12 +165,8 @@ Value make_symbol_with_length(VM& vm, const char* begin, size_t length) {
   }
   o = new(vm) Object(Object::Type::Symbol);
   o->as_symbol.name = strndup(begin, length);
-  vm.symList = make_cons(vm, o, vm.symList);
+  vm.symList = vm.Cons(o, vm.symList);
   return o;
-}
-
-Value make_symbol(VM& vm, const char* name) {
-  return make_symbol_with_length(vm, name, strlen(name));
 }
 
 BuiltinFunc builtin_func(Value o) {
@@ -349,7 +325,7 @@ Value builtin_cons(VM& vm, Value args) {
   args = cons_rest(vm, args);
   Value rest = cons_first(vm, args);
   VM_EXPECT(vm, cons_rest(vm, args).isNil());
-  return make_cons(vm, first, rest);
+  return vm.Cons(first, rest);
 }
 
 Value builtin_first(VM& vm, Value args) {
@@ -418,7 +394,7 @@ Value extend_env(VM& vm, Value params, Value args, Value env) {
     return extend_env(vm,
       cons_rest(vm, params),
       cons_rest(vm, args),
-      make_cons(vm, make_cons(vm, key, value), env));
+      vm.Cons(vm.Cons(key, value), env));
   } else {
     EXPECT(args.isNil());
     return env;
@@ -446,7 +422,7 @@ Value make_lambdas_env(VM& vm, Value lambdas, Value env) {
 
     lambda = make_lambda(vm, params, body, env);
 
-    envptr->as_cons.first = make_cons(vm, name, lambda).getObj();
+    envptr->as_cons.first = vm.Cons(name, lambda).getObj();
     envptr = cons_rest(vm, envptr);
 
     lambdas = cons_rest(vm, lambdas);
@@ -460,7 +436,7 @@ Value make_lambdas_env(VM& vm, Value lambdas, Value env) {
 Value eval(VM& vm, Value o, Map env);
 Value eval_list(VM& vm, Value o, Map env) {
   if(o.isCons()) {
-    return make_cons(vm, eval(vm, cons_first(vm, o), env), eval_list(vm, cons_rest(vm, o), env));
+    return vm.Cons(eval(vm, cons_first(vm, o), env), eval_list(vm, cons_rest(vm, o), env));
   } else {
     return eval(vm, o, env);
   }
@@ -507,7 +483,7 @@ Value eval(VM& vm, Value o, Map env) {
         f = eval(vm, f, env);
         if(f.isBuiltin()) {
           Value params = eval_list(vm, o, env);
-          EvalFrame builtinFrame(vm, make_cons(vm, f, params), env);
+          EvalFrame builtinFrame(vm, vm.Cons(f, params), env);
           Value res = builtin_func(f)(vm, params);
           return res;
         } else if(f.isLambda()) {
@@ -548,7 +524,8 @@ bool is_digit(int ch) {
 }
 
 bool is_sym_char(int ch) {
-  return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch == '?' || ch == '+' || ch == '-' || ch == '/' || ch == '*';
+  return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
+    ch == '?' || ch == '+' || ch == '-' || ch == '/' || ch == '*';
 }
 
 static Value parse_value(VM& vm, const char** text);
@@ -561,7 +538,7 @@ static Value parse_list(VM& vm, const char** text) {
   } else {
     Value first = parse_value(vm, text);
     Value rest = parse_list(vm, text);
-    return make_cons(vm, first, rest);
+    return vm.Cons(first, rest);
   }
 }
 
@@ -666,8 +643,8 @@ Value parse_multi(VM& vm, const char* text) {
   text = skip_ws(text);
   while(*text != '\0') {
     Value o = parse_value(vm, &text);
-    // result = make_cons(vm, o, result);
-    *ptr = make_cons(vm, o, nil).getObj();
+    // result = vm.Cons(o, result);
+    *ptr = vm.Cons(o, nil).getObj();
     ptr = &(*ptr)->as_cons.rest;
     text = skip_ws(text);
   }
@@ -682,26 +659,26 @@ void testMakeList() {
   Value three = make_integer(vm, 3);
 
   {
-    Value a = make_list(vm);
+    Value a = vm.List();
     Value b = vm.nil;
     EXPECT(obj_equal(a, b));
   }
 
   {
-    Value a = make_list(vm, one);
-    Value b = make_cons(vm, one, vm.nil);
+    Value a = vm.List(one);
+    Value b = vm.Cons(one, vm.nil);
     EXPECT(obj_equal(a, b));
   }
 
   {
-    Value a = make_list(vm, one, two);
-    Value b = make_cons(vm, one, make_cons(vm, two, vm.nil));
+    Value a = vm.List(one, two);
+    Value b = vm.Cons(one, vm.Cons(two, vm.nil));
     EXPECT(obj_equal(a, b));
   }
 
   {
-    Value a = make_list(vm, one, two, three);
-    Value b = make_cons(vm, one, make_cons(vm, two, make_cons(vm, three, vm.nil)));
+    Value a = vm.List(one, two, three);
+    Value b = vm.Cons(one, vm.Cons(two, vm.Cons(three, vm.nil)));
     EXPECT(obj_equal(a, b));
   }
 
@@ -732,8 +709,8 @@ void testParse() {
 
   {
     Value res = parse(vm, "(a b)");
-    Value a = make_symbol(vm, "a");
-    Value b = make_symbol(vm, "b");
+    Value a = vm.Symbol("a");
+    Value b = vm.Symbol("b");
     EXPECT(cons_first(vm, res) == a);
     EXPECT(cons_first(vm, cons_rest(vm, res)) == b);
     EXPECT(cons_rest(vm, cons_rest(vm, res)).isNil());
@@ -757,33 +734,33 @@ void testEval() {
   }
 
   {
-    Value list = make_list(vm, add, one, two);
+    Value list = vm.List(add, one, two);
 
     EXPECT_INT_EQ(integer_value(eval(vm, list, vm.nil)), 3);
   }
 
   {
-    Value a = make_symbol(vm, "a");
-    Value pair = make_cons(vm, a, make_integer(vm, 42));
-    Value env = make_cons(vm, pair, vm.nil);
+    Value a = vm.Symbol("a");
+    Value pair = vm.Cons(a, make_integer(vm, 42));
+    Value env = vm.Cons(pair, vm.nil);
     EXPECT_INT_EQ(integer_value(eval(vm, a, env)), 42);
   }
 
   {
-    Value list = make_list(vm, plus, one, two);
+    Value list = vm.List(plus, one, two);
 
-    Value pair = make_cons(vm, plus, add);
-    Value env = make_cons(vm, pair, vm.nil);
+    Value pair = vm.Cons(plus, add);
+    Value env = vm.Cons(pair, vm.nil);
     EXPECT_INT_EQ(integer_value(eval(vm, list, env)), 3);
   }
 
   {
-    Value list = make_list(vm, _if, _true, one, two);
+    Value list = vm.List(_if, _true, one, two);
     EXPECT_INT_EQ(integer_value(eval(vm, list, vm.nil)), 1);
   }
 
   {
-    Value list = make_list(vm, _if, _false, one, two);
+    Value list = vm.List(_if, _false, one, two);
     EXPECT_INT_EQ(integer_value(eval(vm, list, vm.nil)), 2);
   }
 
@@ -796,8 +773,8 @@ void testParseAndEval() {
     Value plus = vm.syms.add;
     Value add = vm.objs.builtin_add;
 
-    Value pair = make_cons(vm, plus, add);
-    Value env = make_cons(vm, pair, vm.nil);
+    Value pair = vm.Cons(plus, add);
+    Value env = vm.Cons(pair, vm.nil);
 
     Value input = parse(vm, "(+ 1 2)");
     Value res = eval(vm, input, env);
@@ -809,12 +786,12 @@ void testParseAndEval() {
     Value scons = vm.syms.cons;
     Value cons = vm.objs.builtin_cons;
 
-    Value env = make_list(vm, make_cons(vm, scons, cons));
+    Value env = vm.List(vm.Cons(scons, cons));
 
     Value input = parse(vm, "((letlambdas ( ((myfunc x y) (cons x y)) ) myfunc) 1 2)");
     Value res = eval(vm, input, env);
 
-    EXPECT(obj_equal(res, make_cons(vm, make_integer(vm, 1), make_integer(vm, 2))));
+    EXPECT(obj_equal(res, vm.Cons(make_integer(vm, 1), make_integer(vm, 2))));
   }
 
   {
@@ -851,8 +828,8 @@ void testSerialize() {
   }
 
   {
-    Value a = make_symbol(vm, "some-random-symbol");
-    Value original = make_list(vm, a,
+    Value a = vm.Symbol("some-random-symbol");
+    Value original = vm.List(a,
       make_integer(vm, 1),
       make_integer(vm, 42),
       make_integer(vm, 129),
@@ -961,6 +938,8 @@ int main(int argc, char** argv) {
       break;
     }
   }
+  
+  VM vm;
 
   if(state != START) {
     fprintf(stderr, "couldn't parse arguments %d\n", state);
@@ -976,7 +955,6 @@ int main(int argc, char** argv) {
       if(file) {
         fprintf(stderr, "can't provide both --transform-file and file to run\n");
       } else {
-        VM vm;
         Value transformed = run_transform_file(vm, transform_file);
         if(serialize_to) {
           Data data = serialize(transformed);
@@ -987,19 +965,16 @@ int main(int argc, char** argv) {
         return 0;
       }
     } else if(serialize_to) {
-      VM vm;
       Value value = parse_file(vm, file, false);
       Data data = serialize(value);
       saveBytes(serialize_to, data);
       return 0;
     } else if(deserialize_from) {
       const char* data = loadBytes(deserialize_from);
-      VM vm;
       Value value = deserialize(vm, data);
       vm.print(value);
       return 0;
     } else if(file) {
-      VM vm;
       Value transformed = run_transform_file(vm, file);
       Value result = eval(vm, transformed, vm.nil);
 

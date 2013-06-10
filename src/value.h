@@ -80,21 +80,7 @@ public:
   operator bool () const = delete;
 };
 
-Value make_symbol(VM& vm, const char* name);
 Value make_builtin(VM& vm, const char* name, BuiltinFunc func);
-Value make_cons(VM& vm, Value first, Value rest);
-
-
-void debug_print(Value value);
-
-Value make_cons(VM& vm, Value a, Value b);
-
-Value make_list(VM& vm);
-
-template<class T, class... TS>
-Value make_list(VM& vm, T t, TS... ts) {
-  return make_cons(vm, t, make_list(vm, ts...));
-}
 
 Value cons_first(VM& vm, Value o);
 
@@ -119,8 +105,6 @@ typedef Value Map;
 Value map_lookup(VM& vm, Map map, Value key);
 
 Value make_symbol_with_length(VM& vm, const char* begin, size_t length);
-
-Value make_symbol(VM& vm, const char* name);
 
 BuiltinFunc builtin_func(Value o);
 

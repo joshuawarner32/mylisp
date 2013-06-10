@@ -43,40 +43,12 @@ void _assert_failed(const char* file, int line, const char* message, ...);
 
 class Syms {
 public:
-#define SYM_LIST \
-  SYM(if_, "if") \
-  SYM(letlambdas, "letlambdas") \
-  SYM(import, "import") \
-  SYM(core, "core") \
-  SYM(quote, "quote") \
-  SYM(add, "+") \
-  SYM(sub, "-") \
-  SYM(mul, "*") \
-  SYM(div, "/") \
-  SYM(modulo, "modulo") \
-  SYM(is_cons, "cons?") \
-  SYM(cons, "cons") \
-  SYM(first, "first") \
-  SYM(rest, "rest") \
-  SYM(is_symbol, "sym?") \
-  SYM(is_equal, "eq?") \
-  SYM(is_nil, "nil?") \
-  SYM(is_int, "int?") \
-  SYM(concat, "concat") \
-  SYM(symbol_name, "sym-name")
-
 #define SYM(cpp, lisp) Value cpp;
-  SYM_LIST
+  #include "symbols.inc.h"
 #undef SYM
   int dummy_value;
 
-  Syms(VM& vm):
-#define SYM(cpp, lisp) cpp(make_symbol(vm, lisp)),
-  SYM_LIST
-#undef SYM
-  dummy_value(0) {}
-
-#undef SYM_LIST
+  Syms(VM& vm);
 };
 
 struct heap_block_t;
@@ -129,6 +101,15 @@ public:
   void* alloc(size_t size);
 
   Value Cons(Value first, Value rest);
+
+  inline Value List() { return nil; }
+
+  template<class T, class... TS>
+  Value List(T t, TS... ts) {
+    return Cons(t, List(ts...));
+  }
+
+  Value Symbol(const char* name);
 
   void print(Value value, int indent = 0, StandardStream stream = StandardStream::StdOut);
 

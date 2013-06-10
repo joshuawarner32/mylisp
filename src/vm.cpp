@@ -1,6 +1,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "vm.h"
 #include "builtin.h"
@@ -34,6 +36,12 @@ void free_heap_block(heap_block_t* h) {
   free(h);
 }
 
+Syms::Syms(VM& vm):
+#define SYM(cpp, lisp) cpp(vm.Symbol(lisp)),
+#include "symbols.inc.h"
+#undef SYM
+  dummy_value(0) {}
+
 VM::VM(size_t heap_block_size):
   heap_block_size(heap_block_size),
   heap(make_heap_block(heap_block_size, 0)),
@@ -66,22 +74,23 @@ VM::VM(size_t heap_block_size):
   objs.builtin_concat = make_builtin(vm, "concat", builtin_concat);
   objs.builtin_symbol_name = make_builtin(vm, "concat", builtin_symbol_name);
 
-  core_imports = make_list(vm,
-    make_cons(vm, syms.add, objs.builtin_add),
-    make_cons(vm, syms.sub, objs.builtin_sub),
-    make_cons(vm, syms.mul, objs.builtin_mul),
-    make_cons(vm, syms.div, objs.builtin_div),
-    make_cons(vm, syms.modulo, objs.builtin_modulo),
-    make_cons(vm, syms.is_cons, objs.builtin_is_cons),
-    make_cons(vm, syms.cons, objs.builtin_cons),
-    make_cons(vm, syms.first, objs.builtin_first),
-    make_cons(vm, syms.rest, objs.builtin_rest),
-    make_cons(vm, syms.is_symbol, objs.builtin_is_symbol),
-    make_cons(vm, syms.is_equal, objs.builtin_is_equal),
-    make_cons(vm, syms.is_nil, objs.builtin_is_nil),
-    make_cons(vm, syms.is_int, objs.builtin_is_int),
-    make_cons(vm, syms.concat, objs.builtin_concat),
-    make_cons(vm, syms.symbol_name, objs.builtin_symbol_name));
+
+  core_imports = List(
+    Cons(syms.add, objs.builtin_add),
+    Cons(syms.sub, objs.builtin_sub),
+    Cons(syms.mul, objs.builtin_mul),
+    Cons(syms.div, objs.builtin_div),
+    Cons(syms.modulo, objs.builtin_modulo),
+    Cons(syms.is_cons, objs.builtin_is_cons),
+    Cons(syms.cons, objs.builtin_cons),
+    Cons(syms.first, objs.builtin_first),
+    Cons(syms.rest, objs.builtin_rest),
+    Cons(syms.is_symbol, objs.builtin_is_symbol),
+    Cons(syms.is_equal, objs.builtin_is_equal),
+    Cons(syms.is_nil, objs.builtin_is_nil),
+    Cons(syms.is_int, objs.builtin_is_int),
+    Cons(syms.concat, objs.builtin_concat),
+    Cons(syms.symbol_name, objs.builtin_symbol_name));
 }
 
 VM::~VM() {
@@ -96,6 +105,18 @@ void* VM::alloc(size_t size) {
   heap->used += size;
   return ret;
 }
+
+Value VM::Cons(Value first, Value rest) {
+  Value o = new(*this) Object(Object::Type::Cons);
+  o->as_cons.first = first.getObj();
+  o->as_cons.rest = rest.getObj();
+  return o;
+}
+
+Value VM::Symbol(const char* name) {
+  return make_symbol_with_length(*this, name, strlen(name));
+}
+
 
 void VM::print(Value value, int indent, StandardStream stream) {
   if(!prettyPrinter) {

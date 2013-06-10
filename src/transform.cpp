@@ -11,7 +11,7 @@ Transformer::Transformer(VM& vm, const char* impl):
   vm(vm) {}
 
 Value Transformer::transform(Value input) {
-  Value quoted_input = make_list(vm, vm.syms.quote, input);
-  Value transformed = eval(vm, make_list(vm, data, quoted_input), vm.nil);
+  Value quoted_input = vm.List(vm.syms.quote, input);
+  Value transformed = eval(vm, vm.List(data, quoted_input), vm.nil);
   return transformed;
 }

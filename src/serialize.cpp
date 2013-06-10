@@ -140,7 +140,7 @@ Value deserializeFrom(VM& vm, const char*& data) {
     Value first = deserializeFrom(vm, data);
     Value rest = deserializeFrom(vm, data);
     depth--;
-    return make_cons(vm, first, rest);
+    return vm.Cons(first, rest);
   } break;
   case SerializedData::STRING: {
     int len = readInt(data);
@@ -160,7 +160,7 @@ Value deserializeFrom(VM& vm, const char*& data) {
     memcpy(buf, data, len);
     buf[len] = 0;
     data += len;
-    return make_symbol(vm, buf);
+    return vm.Symbol(buf);
   } break;
   case SerializedData::BUILTIN: {
     int id = readInt(data);
