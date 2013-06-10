@@ -4,6 +4,7 @@
 
 #include "vm.h"
 #include "builtin.h"
+#include "prettyprint.h"
 
 struct heap_block_t {
   heap_block_t* next;
@@ -36,6 +37,8 @@ void free_heap_block(heap_block_t* h) {
 VM::VM(size_t heap_block_size):
   heap_block_size(heap_block_size),
   heap(make_heap_block(heap_block_size, 0)),
+  transformer(0),
+  prettyPrinter(0),
   nil(new(*this) Object(Object::Type::Nil)),
   true_(new (*this) Object(Object::Type::Bool)),
   false_(new (*this) Object(Object::Type::Bool)),
@@ -94,8 +97,15 @@ void* VM::alloc(size_t size) {
   return ret;
 }
 
+void VM::print(Value value, int indent, StandardStream stream) {
+  if(!prettyPrinter) {
+    prettyPrinter = new PrettyPrinter(*this);
+  }
+  prettyPrinter->print(value, indent, stream);
+}
+
 void VM::errorOccurred(const char* file, int line, const char* message) {
   fprintf(stderr, "error occurred: %s:%d: %s\n", file, line, message);
-  currentEvalFrame->dump(stderr);
+  currentEvalFrame->dump(StandardStream::StdErr);
   exit(1);
 }

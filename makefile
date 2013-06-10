@@ -10,7 +10,7 @@ executable = build/mylisp
 
 run: $(executable) test
 	echo "running"
-	${<} src/prettyprint.ss
+	${<} src/test.ss
 
 boot: build/boot-1/boot.ss.bin build/boot-1/prettyprint.ss.bin
 	cp build/boot-1/boot.ss.bin build/boot-1/prettyprint.ss.bin boot

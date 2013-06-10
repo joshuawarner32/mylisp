@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "value.h"
+#include "stream.h"
 
 void _assert_failed(const char* file, int line, const char* message, ...);
 
@@ -81,11 +82,18 @@ public:
 struct heap_block_t;
 class EvalFrame;
 
+class Transformer;
+class PrettyPrinter;
+
 class VM {
-public:
+private:
   size_t heap_block_size;
   heap_block_t* heap;
 
+  Transformer* transformer;
+  PrettyPrinter* prettyPrinter;
+
+public:
   Value nil;
   Value true_;
   Value false_;
@@ -122,6 +130,8 @@ public:
 
   Value Cons(Value first, Value rest);
 
+  void print(Value value, int indent = 0, StandardStream stream = StandardStream::StdOut);
+
   void errorOccurred(const char* file, int line, const char* message);
 };
 
@@ -136,5 +146,5 @@ public:
 
   ~EvalFrame();
 
-  void dump(FILE* stream);
+  void dump(StandardStream stream);
 };

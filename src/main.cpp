@@ -8,6 +8,7 @@
 #include "serialize.h"
 #include "vm.h"
 #include "transform.h"
+#include "prettyprint.h"
 
 void _assert_failed(const char* file, int line, const char* message, ...) {
   fprintf(stderr, "assertion failure, %s:%d:\n  ", file, line);
@@ -60,11 +61,14 @@ EvalFrame::~EvalFrame() {
 }
 
 bool obj_mentions_symbol(Value obj, Value symbol);
+FILE* streamToFile(StandardStream stream);
 
-void EvalFrame::dump(FILE* stream) {
+void EvalFrame::dump(StandardStream stream) {
+  FILE* f = streamToFile(stream);
   static const char prefix[] = "evaluating ";
-  fprintf(stream, prefix);
-  obj_print(evaluating, strlen(prefix) / 2, stream);
+  fprintf(f, prefix);
+  // obj_print(evaluating, strlen(prefix) / 2, f);
+  vm.print(evaluating, strlen(prefix), stream);
   Value end = previous ? previous->env : vm.nil;
   while(!env.isNil() && env != end) {
     ASSERT(env.isCons());
@@ -77,8 +81,9 @@ void EvalFrame::dump(FILE* stream) {
       Value value = pair->as_cons.rest;
       ASSERT(key.isSymbol());
       const char* name = key->as_symbol.name;
-      int len = fprintf(stream, "    where %s = ", name);
-      obj_print(value, len / 2, stderr);
+      int len = fprintf(f, "    where %s = ", name);
+      // obj_print(value, len / 2, f);
+      vm.print(value, len, stream);
     }
   }
   if(previous) {
@@ -1077,7 +1082,8 @@ int main(int argc, char** argv) {
       VM vm;
       Value transformed = run_transform_file(vm, file);
       Value result = eval(vm, transformed, vm.nil);
-      obj_print(result);
+
+      vm.print(result);
       return 0;
     } else {
       fprintf(stderr, "must provide either --transform-file or file to run\n");

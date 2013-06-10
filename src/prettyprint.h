@@ -1,4 +1,6 @@
 
+#include "stream.h"
+
 class Value;
 class Object;
 class VM;
@@ -10,5 +12,5 @@ public:
 
   PrettyPrinter(VM& vm, const char* impl = 0);
 
-  void print(Value value, int indent = 0);
+  void print(Value value, int indent = 0, StandardStream stream = StandardStream::StdOut);
 };

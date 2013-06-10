@@ -62,6 +62,7 @@
 (define (tostring value)
   (value-tostring value 0 #f))
 
-(tostring 
-  (quote 
-    (map (lambda (x) (+ x 1)) (quote (1 2 3 4 5)))  ))
+(define (tostring-indented value indent)
+  (value-tostring value indent #f))
+
+tostring-indented
