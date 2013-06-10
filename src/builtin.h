@@ -15,5 +15,7 @@ Value builtin_is_symbol(VM& vm, Value args);
 Value builtin_is_equal(VM& vm, Value args);
 Value builtin_is_nil(VM& vm, Value args);
 Value builtin_is_int(VM& vm, Value args);
+Value builtin_is_str(VM& vm, Value args);
 Value builtin_concat(VM& vm, Value args);
+Value builtin_split(VM& vm, Value args);
 Value builtin_symbol_name(VM& vm, Value args);

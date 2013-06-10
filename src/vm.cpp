@@ -71,8 +71,10 @@ VM::VM(size_t heap_block_size):
   objs.builtin_is_equal = make_builtin(vm, "is_equal", builtin_is_equal);
   objs.builtin_is_nil = make_builtin(vm, "is_nil", builtin_is_nil);
   objs.builtin_is_int = make_builtin(vm, "is_int", builtin_is_int);
+  objs.builtin_is_str = make_builtin(vm, "is_str", builtin_is_str);
   objs.builtin_concat = make_builtin(vm, "concat", builtin_concat);
-  objs.builtin_symbol_name = make_builtin(vm, "concat", builtin_symbol_name);
+  objs.builtin_split = make_builtin(vm, "split", builtin_split);
+  objs.builtin_symbol_name = make_builtin(vm, "symbol-name", builtin_symbol_name);
 
 
   core_imports = List(
@@ -88,8 +90,10 @@ VM::VM(size_t heap_block_size):
     Cons(syms.is_symbol, objs.builtin_is_symbol),
     Cons(syms.is_equal, objs.builtin_is_equal),
     Cons(syms.is_nil, objs.builtin_is_nil),
+    Cons(syms.is_str, objs.builtin_is_str),
     Cons(syms.is_int, objs.builtin_is_int),
     Cons(syms.concat, objs.builtin_concat),
+    Cons(syms.split, objs.builtin_split),
     Cons(syms.symbol_name, objs.builtin_symbol_name));
 }
 

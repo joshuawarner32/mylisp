@@ -1,5 +1,6 @@
 
 (import core concat)
+(import core split)
 (import core +)
 (import core -)
 (import core *)
@@ -9,6 +10,7 @@
 (import core cons?)
 (import core sym?)
 (import core int?)
+(import core str?)
 (import core eq?)
 (import core sym-name)
 (import core first)
@@ -45,6 +47,21 @@
 (define (int-to-str i)
   (if (eq? i 0) "0" (int-to-str-digits i)))
 
+(define (escape-str-inner s)
+  (if (eq? s "") ""
+    (let ((parts (split s 1)))
+      (let ((ch (first parts))
+            (s  (first (rest parts))))
+        (concat
+          (if (eq? ch "\"") "\\\""
+            (if (eq? ch "\n") "\\\n"
+              (if (eq? ch "\\") "\\\\"
+                ch)))
+          (escape-str-inner s))))))
+
+(define (escape-str s)
+  (concat "\"" (escape-str-inner s) "\""))
+
 (define (value-tostring value indent list-on-newline)
   (if (nil? value) "()"
     (if (cons? value)
@@ -57,7 +74,9 @@
         (sym-name value)
         (if (int? value)
           (int-to-str value)
-          "<unknown>")))))
+          (if (str? value)
+            (escape-str value)
+            "<unknown>"))))))
 
 (define (tostring value)
   (value-tostring value 0 #f))
