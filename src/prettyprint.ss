@@ -54,7 +54,7 @@
             (s  (first (rest parts))))
         (concat
           (if (eq? ch "\"") "\\\""
-            (if (eq? ch "\n") "\\\n"
+            (if (eq? ch "\n") "\\n"
               (if (eq? ch "\\") "\\\\"
                 ch)))
           (escape-str-inner s))))))
