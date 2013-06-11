@@ -22,7 +22,7 @@ PrettyPrinter::PrettyPrinter(VM& vm, const char* impl):
 void PrettyPrinter::print(Value value, int indent, StandardStream stream) {
   FILE* s = streamToFile(stream);
   Value quoted_input = vm.List(vm.syms.quote, value);
-  Value str = eval(vm, vm.List(data, quoted_input, make_integer(vm, indent)), vm.nil);
+  Value str = eval(vm, vm.List(data, quoted_input, vm.Integer(indent)), vm.nil);
   const char* data = string_value(str);
   fprintf(s, "%s\n", data);
 }

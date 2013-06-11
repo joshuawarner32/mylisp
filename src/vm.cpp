@@ -121,6 +121,11 @@ Value VM::Symbol(const char* name) {
   return make_symbol_with_length(*this, name, strlen(name));
 }
 
+Value VM::Integer(int value) {
+  Value o = new(*this) Object(Object::Type::Integer);
+  o->as_integer.value = value;
+  return o;
+}
 
 void VM::print(Value value, int indent, StandardStream stream) {
   if(!prettyPrinter) {

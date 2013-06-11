@@ -118,12 +118,6 @@ const char* string_value(Value o) {
   return o->as_string.value;
 }
 
-Value make_integer(VM& vm, int value) {
-  Value o = new(vm) Object(Object::Type::Integer);
-  o->as_integer.value = value;
-  return o;
-}
-
 int integer_value(Value o) {
   EXPECT(o.isInteger());
   return o->as_integer.value;
@@ -472,7 +466,7 @@ static Value parse_value(VM& vm, const char** text) {
       value += **text - '0';
       (*text)++;
     }
-    return make_integer(vm, value);
+    return vm.Integer(value);
   } else if(**text == '#') {
     (*text)++;
     switch(*((*text)++)) {
@@ -527,9 +521,9 @@ Value parse_multi(VM& vm, const char* text) {
 void testMakeList() {
   VM vm;
 
-  Value one = make_integer(vm, 1);
-  Value two = make_integer(vm, 2);
-  Value three = make_integer(vm, 3);
+  Value one = vm.Integer(1);
+  Value two = vm.Integer(2);
+  Value three = vm.Integer(3);
 
   {
     Value a = vm.List();
@@ -598,12 +592,12 @@ void testEval() {
   Value _if = vm.syms.if_;
   Value _true = vm.true_;
   Value _false = vm.false_;
-  Value one = make_integer(vm, 1);
-  Value two = make_integer(vm, 2);
+  Value one = vm.Integer(1);
+  Value two = vm.Integer(2);
 
   {
-    EXPECT_INT_EQ(integer_value(eval(vm, make_integer(vm, 1), vm.nil)), 1);
-    EXPECT_INT_EQ(integer_value(eval(vm, make_integer(vm, 42), vm.nil)), 42);
+    EXPECT_INT_EQ(integer_value(eval(vm, vm.Integer(1), vm.nil)), 1);
+    EXPECT_INT_EQ(integer_value(eval(vm, vm.Integer(42), vm.nil)), 42);
   }
 
   {
@@ -614,7 +608,7 @@ void testEval() {
 
   {
     Value a = vm.Symbol("a");
-    Value pair = vm.Cons(a, make_integer(vm, 42));
+    Value pair = vm.Cons(a, vm.Integer(42));
     Value env = vm.Cons(pair, vm.nil);
     EXPECT_INT_EQ(integer_value(eval(vm, a, env)), 42);
   }
@@ -664,7 +658,7 @@ void testParseAndEval() {
     Value input = parse(vm, "((letlambdas ( ((myfunc x y) (cons x y)) ) myfunc) 1 2)");
     Value res = eval(vm, input, env);
 
-    EXPECT(obj_equal(res, vm.Cons(make_integer(vm, 1), make_integer(vm, 2))));
+    EXPECT(obj_equal(res, vm.Cons(vm.Integer(1), vm.Integer(2))));
   }
 
   {
@@ -687,14 +681,14 @@ void testSerialize() {
   }
 
   {
-    Value original = make_integer(vm, 0);
+    Value original = vm.Integer(0);
     Data serialized = serialize(original);
     Value deserialized = deserialize(vm, serialized.data);
     EXPECT(obj_equal(deserialized, original));
   }
 
   {
-    Value original = make_integer(vm, 1);
+    Value original = vm.Integer(1);
     Data serialized = serialize(original);
     Value deserialized = deserialize(vm, serialized.data);
     EXPECT(obj_equal(deserialized, original));
@@ -703,11 +697,11 @@ void testSerialize() {
   {
     Value a = vm.Symbol("some-random-symbol");
     Value original = vm.List(a,
-      make_integer(vm, 1),
-      make_integer(vm, 42),
-      make_integer(vm, 129),
-      make_integer(vm, 4),
-      make_integer(vm, 5));
+      vm.Integer(1),
+      vm.Integer(42),
+      vm.Integer(129),
+      vm.Integer(4),
+      vm.Integer(5));
     Data serialized = serialize(original);
     Value deserialized = deserialize(vm, serialized.data);
     EXPECT(obj_equal(deserialized, original));

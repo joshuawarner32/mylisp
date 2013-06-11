@@ -152,7 +152,7 @@ Value deserializeFrom(VM& vm, const char*& data) {
   } break;
   case SerializedData::INTEGER: {
     int res = readInt(data);
-    return make_integer(vm, res);
+    return vm.Integer(res);
   } break;
   case SerializedData::SYMBOL: {
     int len = readInt(data);

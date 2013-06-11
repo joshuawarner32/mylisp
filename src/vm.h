@@ -36,7 +36,7 @@ void _assert_failed(const char* file, int line, const char* message, ...);
 
 #define VM_EXPECT(vm, expected) \
   do { \
-    if(!expected) { \
+    if(!(expected)) { \
       VM_ERROR(vm, #expected); \
     } \
   } while(0)
@@ -112,6 +112,8 @@ public:
   }
 
   Value Symbol(const char* name);
+  Value Integer(int value);
+  inline Value Bool(bool value) { return value ? true_ : false_; }
 
   void print(Value value, int indent = 0, StandardStream stream = StandardStream::StdOut);
 

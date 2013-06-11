@@ -10,7 +10,7 @@ Value builtin_add(VM& vm, Value args) {
     args = cons_rest(vm, args);
     res += integer_value(a);
   }
-  return make_integer(vm, res);
+  return vm.Integer(res);
 }
 
 Value builtin_sub(VM& vm, Value args) {
@@ -19,7 +19,7 @@ Value builtin_sub(VM& vm, Value args) {
     Value a = cons_first(vm, args);
     args = cons_rest(vm, args);
     if(args.isNil()) {
-      return make_integer(vm, -integer_value(a));
+      return vm.Integer(-integer_value(a));
     }
     res = integer_value(a);
   }
@@ -28,7 +28,7 @@ Value builtin_sub(VM& vm, Value args) {
     args = cons_rest(vm, args);
     res -= integer_value(a);
   }
-  return make_integer(vm, res);
+  return vm.Integer(res);
 }
 
 Value builtin_mul(VM& vm, Value args) {
@@ -38,7 +38,7 @@ Value builtin_mul(VM& vm, Value args) {
     args = cons_rest(vm, args);
     res *= integer_value(a);
   }
-  return make_integer(vm, res);
+  return vm.Integer(res);
 }
 
 Value builtin_div(VM& vm, Value args) {
@@ -50,16 +50,23 @@ Value builtin_div(VM& vm, Value args) {
     args = cons_rest(vm, args);
     res /= integer_value(a);
   }
-  return make_integer(vm, res);
+  return vm.Integer(res);
 }
 
-Value builtin_modulo(VM& vm, Value args) {
+template<class Func>
+static Value expandArgs2(VM& vm, Value args, Func func) {
   Value a = cons_first(vm, args);
   args = cons_rest(vm, args);
   Value b = cons_first(vm, args);
   VM_EXPECT(vm, cons_rest(vm, args).isNil());
-  return make_integer(vm,
-    integer_value(a) % integer_value(b));
+  return func(a, b);
+}
+
+Value builtin_modulo(VM& vm, Value args) {
+  return expandArgs2(vm, args, [&vm] (Value a, Value b) {
+    return vm.Integer(
+      integer_value(a) % integer_value(b));
+  });
 }
 
 Value builtin_is_cons(VM& vm, Value args) {
@@ -69,11 +76,9 @@ Value builtin_is_cons(VM& vm, Value args) {
 }
 
 Value builtin_cons(VM& vm, Value args) {
-  Value first = cons_first(vm, args);
-  args = cons_rest(vm, args);
-  Value rest = cons_first(vm, args);
-  VM_EXPECT(vm, cons_rest(vm, args).isNil());
-  return vm.Cons(first, rest);
+  return expandArgs2(vm, args, [&vm] (Value first, Value rest) {
+    return vm.Cons(first, rest);
+  });
 }
 
 Value builtin_first(VM& vm, Value args) {
@@ -95,11 +100,9 @@ Value builtin_is_symbol(VM& vm, Value args) {
 }
 
 Value builtin_is_equal(VM& vm, Value args) {
-  Value a = cons_first(vm, args);
-  args = cons_rest(vm, args);
-  Value b = cons_first(vm, args);
-  VM_EXPECT(vm, cons_rest(vm, args).isNil());
-  return obj_equal(a, b) ? vm.true_ : vm.false_;
+  return expandArgs2(vm, args, [&vm] (Value a, Value b) {
+    return vm.Bool(obj_equal(a, b));
+  });
 }
 
 Value builtin_is_nil(VM& vm, Value args) {
