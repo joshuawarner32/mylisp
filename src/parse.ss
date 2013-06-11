@@ -3,11 +3,15 @@
 (import core split)
 (import core first)
 (import core rest)
+(import core cons)
 (import core eq?)
 (import core nil?)
 
 (define (or a b) (if a #t b))
 (define (not a) (if a #f #t))
+
+(define (lp val func)
+  (func (first val) (rest val)))
 
 (define (consume str func)
   (let ((parts (split str 1)))
@@ -41,19 +45,35 @@
 (define (digit-value ch)
   (list-index (quote ("0" "1" "2" "3" "4" "5" "6" "7" "8" "9")) ch))
 
-(define (parse-integer str)
+(define (parse-integer str value)
   (consume str (lambda (ch s)
-    (let ((d (digit-value ch)))
-      (if (nil? d) ()
-        (let ((val (parse-integer s)))
-          (if (nil? val) d
-            (+ (* 10 d) val))))))))
+    (let ((digit (digit-value ch)))
+      (if (nil? digit) (cons value s)
+        (parse-integer s (+ (* 10 value) digit)))))))
+
+(define (lookup key map)
+  (if (nil? map) (error)
+    (if (eq? key (first map)) (first (rest map))
+      (lookup key (first (rest (rest map)))))))
+
+(define (parse-string-escaped str)
+  (consume str (lambda (ch s)
+    (lp (parse-string s) (lambda (val str))
+      (cons
+        (concat
+          (lookup ch (quote ("n" "\n" "\"" "\"" "\\" "\\")))
+          val) 
+        str)))))
+
+(define (parse-string str)
+  (consume str (lambda (ch s))
+    (concat
+      (if (eq? ch "\"") (cons "" str))
+        (if (eq? ch )))))
 
 (define (parse-value str)
   (let ((str (skip-whitespace str)))
-    (let ((int (parse-integer str)))
-      (if (not (nil? int)) int
-        ()))))
+    (parse-integer str 0)))
 
 (define (internal-parse str)
   (parse-value str))
