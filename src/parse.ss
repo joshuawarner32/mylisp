@@ -39,35 +39,23 @@
 (define (digit-value ch)
   (list-index (quote ("0" "1" "2" "3" "4" "5" "6" "7" "8" "9")) ch))
 
-(define (parse-integer str value)
+(define (parse-integer str value continue)
   (consume str (lambda (ch s)
     (let ((digit (digit-value ch)))
-      (if (nil? digit) (cons value s)
-        (parse-integer s (+ (* 10 value) digit)))))))
+      (if (nil? digit) (continue value s)
+        (parse-integer s (+ (* 10 value) digit continue)))))))
 
 (define (lookup key map)
   (if (nil? map) (error)
     (if (eq? key (first map)) (first (rest map))
       (lookup key (first (rest (rest map)))))))
 
-(define (parse-string-escaped str)
-  (consume str (lambda (ch s)
-    (lp (parse-string s) (lambda (val str))
-      (cons
-        (concat
-          (lookup ch (quote ("n" "\n" "\"" "\"" "\\" "\\")))
-          val) 
-        str)))))
-
-(define (parse-string str)
-  (consume str (lambda (ch s))
-    (concat
-      (if (eq? ch "\"") (cons "" str))
-        (if (eq? ch )))))
-
 (define (parse-value str)
-  (let ((str (skip-whitespace str)))
-    (parse-integer str 0)))
+  (consume str (lambda (ch s)
+    (let ((digit (digit-value ch)))
+      (if (nil? digit) ()
+        (parse-integer str 0 (lambda (value s)
+          value)))))))
 
 (define (internal-parse str)
   (parse-value str))
