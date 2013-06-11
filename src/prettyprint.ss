@@ -1,20 +1,9 @@
 
-(import core concat)
-(import core split)
-(import core +)
-(import core -)
-(import core *)
-(import core /)
-(import core modulo)
-(import core nil?)
-(import core cons?)
-(import core sym?)
-(import core int?)
-(import core str?)
-(import core eq?)
-(import core sym-name)
-(import core first)
-(import core rest)
+(import core
+  (concat split + - * /
+    modulo nil? cons?
+    sym? int? str? eq?
+    sym-name first rest))
 
 (define (list-tostring value indent list-on-newline value-stringer)
   (if (nil? value) ")"

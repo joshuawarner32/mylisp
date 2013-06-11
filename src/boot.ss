@@ -1,11 +1,5 @@
-(import core eq?)
-(import core nil?)
-(import core rest)
-(import core first)
-(import core cons)
-(import core cons?)
-(import core sym?)
-(import core +)
+(import core
+  (eq? nil? rest first cons cons? sym? +))
 
 (define (internal-transform-defines program new-program)
   (if (nil? program) new-program
@@ -31,11 +25,25 @@
   )
 )
 
+(define (expand-imports imp imports)
+  (let ((module (first (rest imp)))
+        (names (first (rest (rest imp)))))
+    (if (sym? names)
+      (cons imp imports)
+      (map
+        (lambda (x)
+          (cons (quote import)
+            (cons module
+              (cons x ()))))
+        names))))
+
+
+
 (define (transform-imports program imports)
   (if (nil? program) (write-imports program imports)
     (if (cons? (first program))
       (if (eq? (first (first program)) (quote import))
-        (transform-imports (rest program) (cons (first program) imports))
+        (transform-imports (rest program) (expand-imports (first program) imports))
         (write-imports (transform-defines program) imports))
       (write-imports (transform-defines program) imports))))
 

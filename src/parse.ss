@@ -1,11 +1,5 @@
-(import core +)
-(import core *)
-(import core split)
-(import core first)
-(import core rest)
-(import core cons)
-(import core eq?)
-(import core nil?)
+(import core
+  (+ * split first rest cons eq? nil?))
 
 (define (or a b) (if a #t b))
 (define (not a) (if a #f #t))

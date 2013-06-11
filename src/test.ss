@@ -1,8 +1,5 @@
-(import core +)
-(import core cons)
-(import core nil?)
-(import core first)
-(import core rest)
+(import core
+  (+ cons nil? first rest))
 
 (define (addone x)
   (+ 1 x))
