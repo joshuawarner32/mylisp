@@ -36,16 +36,19 @@
 (define (int-to-str i)
   (if (eq? i 0) "0" (int-to-str-digits i)))
 
+(define (mapstr ch lst)
+  (if (nil? lst) ch
+    (if (eq? (first lst) ch)
+      (first (rest lst))
+      (mapstr ch (rest (rest lst))))))
+
 (define (escape-str-inner s)
   (if (eq? s "") ""
     (let ((parts (split s 1)))
       (let ((ch (first parts))
             (s  (first (rest parts))))
         (concat
-          (if (eq? ch "\"") "\\\""
-            (if (eq? ch "\n") "\\n"
-              (if (eq? ch "\\") "\\\\"
-                ch)))
+          (mapstr ch (quote ("\"" "\\\"" "\n" "\\n" "\\" "\\\\")))
           (escape-str-inner s))))))
 
 (define (escape-str s)

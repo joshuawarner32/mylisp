@@ -1,5 +1,5 @@
 (import core
-  (+ cons nil? first rest))
+  (+ cons nil? first rest concat))
 
 (define (addone x)
   (+ 1 x))
@@ -27,5 +27,7 @@
     (+ x n)))
 
 ((addn 32) 10)
+
+(concat "Hello " "world")
 
 ; (let)
