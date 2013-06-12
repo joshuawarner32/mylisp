@@ -62,6 +62,12 @@ static Value expandArgs2(VM& vm, Value args, Func func) {
   return func(a, b);
 }
 
+Value singleValue(VM& vm, Value args) {
+  Value ret = cons_first(vm, args);
+  VM_EXPECT(vm, cons_rest(vm, args).isNil());
+  return ret;
+}
+
 Value builtin_modulo(VM& vm, Value args) {
   return expandArgs2(vm, args, [&vm] (Value a, Value b) {
     return vm.Integer(
@@ -70,9 +76,7 @@ Value builtin_modulo(VM& vm, Value args) {
 }
 
 Value builtin_is_cons(VM& vm, Value args) {
-  Value arg = cons_first(vm, args);
-  VM_EXPECT(vm, cons_rest(vm, args).isNil());
-  return arg.isCons() ? vm.true_ : vm.false_;
+  return singleValue(vm, args).isCons() ? vm.true_ : vm.false_;
 }
 
 Value builtin_cons(VM& vm, Value args) {
@@ -82,21 +86,15 @@ Value builtin_cons(VM& vm, Value args) {
 }
 
 Value builtin_first(VM& vm, Value args) {
-  Value arg = cons_first(vm, args);
-  VM_EXPECT(vm, cons_rest(vm, args).isNil());
-  return cons_first(vm, arg);
+  return cons_first(vm, singleValue(vm, args));
 }
 
 Value builtin_rest(VM& vm, Value args) {
-  Value arg = cons_first(vm, args);
-  VM_EXPECT(vm, cons_rest(vm, args).isNil());
-  return cons_rest(vm, arg);
+  return cons_rest(vm, singleValue(vm, args));
 }
 
 Value builtin_is_symbol(VM& vm, Value args) {
-  Value arg = cons_first(vm, args);
-  VM_EXPECT(vm, cons_rest(vm, args).isNil());
-  return arg.isSymbol() ? vm.true_ : vm.false_;
+  return vm.Bool(singleValue(vm, args).isSymbol());
 }
 
 Value builtin_is_equal(VM& vm, Value args) {
@@ -106,21 +104,15 @@ Value builtin_is_equal(VM& vm, Value args) {
 }
 
 Value builtin_is_nil(VM& vm, Value args) {
-  Value arg = cons_first(vm, args);
-  VM_EXPECT(vm, cons_rest(vm, args).isNil());
-  return arg.isNil() ? vm.true_ : vm.false_;
+  return vm.Bool(singleValue(vm, args).isNil());
 }
 
 Value builtin_is_int(VM& vm, Value args) {
-  Value arg = cons_first(vm, args);
-  VM_EXPECT(vm, cons_rest(vm, args).isNil());
-  return arg.isInteger() ? vm.true_ : vm.false_;
+  return vm.Bool(singleValue(vm, args).isInteger());
 }
 
 Value builtin_is_str(VM& vm, Value args) {
-  Value arg = cons_first(vm, args);
-  VM_EXPECT(vm, cons_rest(vm, args).isNil());
-  return arg.isString() ? vm.true_ : vm.false_;
+  return vm.Bool(singleValue(vm, args).isString());
 }
 
 Value builtin_concat(VM& vm, Value args) {
@@ -154,7 +146,5 @@ Value builtin_split(VM& vm, Value args) {
 }
 
 Value builtin_symbol_name(VM& vm, Value args) {
-  Value arg = cons_first(vm, args);
-  VM_EXPECT(vm, cons_rest(vm, args).isNil());
-  return make_string(vm, symbol_name(arg));
+  return make_string(vm, symbol_name(singleValue(vm, args)));
 }
