@@ -94,7 +94,7 @@ Value make_string(VM& vm, const char* value);
 
 const char* string_value(Value o);
 
-int integer_value(Value o);
+int integer_value(VM& vm, Value o);
 
 const char* symbol_name(Value o);
 

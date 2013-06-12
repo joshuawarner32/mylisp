@@ -8,7 +8,7 @@ Value builtin_add(VM& vm, Value args) {
   while(!args.isNil()) {
     Value a = cons_first(vm, args);
     args = cons_rest(vm, args);
-    res += integer_value(a);
+    res += integer_value(vm, a);
   }
   return vm.Integer(res);
 }
@@ -19,14 +19,14 @@ Value builtin_sub(VM& vm, Value args) {
     Value a = cons_first(vm, args);
     args = cons_rest(vm, args);
     if(args.isNil()) {
-      return vm.Integer(-integer_value(a));
+      return vm.Integer(-integer_value(vm, a));
     }
-    res = integer_value(a);
+    res = integer_value(vm, a);
   }
   while(!args.isNil()) {
     Value a = cons_first(vm, args);
     args = cons_rest(vm, args);
-    res -= integer_value(a);
+    res -= integer_value(vm, a);
   }
   return vm.Integer(res);
 }
@@ -36,19 +36,19 @@ Value builtin_mul(VM& vm, Value args) {
   while(!args.isNil()) {
     Value a = cons_first(vm, args);
     args = cons_rest(vm, args);
-    res *= integer_value(a);
+    res *= integer_value(vm, a);
   }
   return vm.Integer(res);
 }
 
 Value builtin_div(VM& vm, Value args) {
   EXPECT(!args.isNil());
-  int res = integer_value(cons_first(vm, args));
+  int res = integer_value(vm, cons_first(vm, args));
   args = cons_rest(vm, args);
   while(!args.isNil()) {
     Value a = cons_first(vm, args);
     args = cons_rest(vm, args);
-    res /= integer_value(a);
+    res /= integer_value(vm, a);
   }
   return vm.Integer(res);
 }
@@ -71,7 +71,7 @@ Value singleValue(VM& vm, Value args) {
 Value builtin_modulo(VM& vm, Value args) {
   return expandArgs2(vm, args, [&vm] (Value a, Value b) {
     return vm.Integer(
-      integer_value(a) % integer_value(b));
+      integer_value(vm, a) % integer_value(vm, b));
   });
 }
 
@@ -129,7 +129,7 @@ static Value _split(VM& vm, const char* str, Value indexes) {
   if(indexes.isNil()) {
     return vm.Cons(make_string(vm, str), vm.nil);
   } else {
-    int l = integer_value(cons_first(vm, indexes));
+    int l = integer_value(vm, cons_first(vm, indexes));
     if(l > (int)strlen(str)) {
       VM_ERROR(vm, "string index out of bounds");
     }

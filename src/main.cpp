@@ -15,7 +15,7 @@ void _assert_failed(const char* file, int line, const char* message, ...) {
 
   va_list ap;
   va_start(ap, message);
-  vprintf(message, ap);
+  vfprintf(stderr, message, ap);
   va_end(ap);
 
   fprintf(stderr, "\n");
@@ -118,8 +118,8 @@ const char* string_value(Value o) {
   return o->as_string.value;
 }
 
-int integer_value(Value o) {
-  EXPECT(o.isInteger());
+int integer_value(VM& vm, Value o) {
+  VM_EXPECT(vm, o.isInteger());
   return o->as_integer.value;
 }
 
@@ -225,7 +225,7 @@ bool obj_equal(Value a, Value b) {
   case Object::Type::String:
     return strcmp(string_value(a), string_value(b)) == 0;
   case Object::Type::Integer:
-    return integer_value(a) == integer_value(b);
+    return a->as_integer.value == b->as_integer.value;
   case Object::Type::Symbol:
   case Object::Type::Builtin:
     return a == b;
@@ -280,7 +280,7 @@ Value make_lambdas_env(VM& vm, Value lambdas, Value env) {
 
     Value name_and_params = cons_first(vm, lambda);
     lambda = cons_rest(vm, lambda);
-    EXPECT(cons_rest(vm, lambda).isNil());
+    VM_EXPECT(vm, cons_rest(vm, lambda).isNil());
     Value body = cons_first(vm, lambda);
 
     Value name = cons_first(vm, name_and_params);
@@ -555,8 +555,8 @@ void testParse() {
   VM vm;
 
   {
-    EXPECT_INT_EQ(integer_value(parse(vm, "1")), 1);
-    EXPECT_INT_EQ(integer_value(parse(vm, "42")), 42);
+    EXPECT_INT_EQ(integer_value(vm, parse(vm, "1")), 1);
+    EXPECT_INT_EQ(integer_value(vm, parse(vm, "42")), 42);
   }
 
   {
@@ -596,21 +596,21 @@ void testEval() {
   Value two = vm.Integer(2);
 
   {
-    EXPECT_INT_EQ(integer_value(eval(vm, vm.Integer(1), vm.nil)), 1);
-    EXPECT_INT_EQ(integer_value(eval(vm, vm.Integer(42), vm.nil)), 42);
+    EXPECT_INT_EQ(integer_value(vm, eval(vm, vm.Integer(1), vm.nil)), 1);
+    EXPECT_INT_EQ(integer_value(vm, eval(vm, vm.Integer(42), vm.nil)), 42);
   }
 
   {
     Value list = vm.List(add, one, two);
 
-    EXPECT_INT_EQ(integer_value(eval(vm, list, vm.nil)), 3);
+    EXPECT_INT_EQ(integer_value(vm, eval(vm, list, vm.nil)), 3);
   }
 
   {
     Value a = vm.Symbol("a");
     Value pair = vm.Cons(a, vm.Integer(42));
     Value env = vm.Cons(pair, vm.nil);
-    EXPECT_INT_EQ(integer_value(eval(vm, a, env)), 42);
+    EXPECT_INT_EQ(integer_value(vm, eval(vm, a, env)), 42);
   }
 
   {
@@ -618,17 +618,17 @@ void testEval() {
 
     Value pair = vm.Cons(plus, add);
     Value env = vm.Cons(pair, vm.nil);
-    EXPECT_INT_EQ(integer_value(eval(vm, list, env)), 3);
+    EXPECT_INT_EQ(integer_value(vm, eval(vm, list, env)), 3);
   }
 
   {
     Value list = vm.List(_if, _true, one, two);
-    EXPECT_INT_EQ(integer_value(eval(vm, list, vm.nil)), 1);
+    EXPECT_INT_EQ(integer_value(vm, eval(vm, list, vm.nil)), 1);
   }
 
   {
     Value list = vm.List(_if, _false, one, two);
-    EXPECT_INT_EQ(integer_value(eval(vm, list, vm.nil)), 2);
+    EXPECT_INT_EQ(integer_value(vm, eval(vm, list, vm.nil)), 2);
   }
 
 }
@@ -646,7 +646,7 @@ void testParseAndEval() {
     Value input = parse(vm, "(+ 1 2)");
     Value res = eval(vm, input, env);
 
-    EXPECT_INT_EQ(integer_value(res), 3);
+    EXPECT_INT_EQ(integer_value(vm, res), 3);
   }
 
   {
@@ -665,7 +665,7 @@ void testParseAndEval() {
     Value input = parse(vm, "((import core +) 1 2)");
     Value res = eval(vm, input, vm.nil);
 
-    EXPECT_INT_EQ(integer_value(res), 3);
+    EXPECT_INT_EQ(integer_value(vm, res), 3);
   }
 
 }
