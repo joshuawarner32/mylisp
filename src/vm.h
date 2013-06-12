@@ -84,7 +84,6 @@ public:
     Value builtin_is_symbol;
     Value builtin_is_equal;
     Value builtin_is_nil;
-    Value builtin_is_int;
     Value builtin_is_str;
     Value builtin_concat;
     Value builtin_split;

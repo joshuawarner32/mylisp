@@ -1,5 +1,9 @@
 (import core
-  (eq? nil? rest first cons cons? sym? +))
+  (eq? rest first cons + ctor))
+
+(define (nil? v) (eq? (ctor v) (quote Nil)))
+(define (cons? v) (eq? (ctor v) (quote cons)))
+(define (sym? v) (eq? (ctor v) (quote Symbol)))
 
 (define (internal-transform-defines program new-program)
   (if (nil? program) new-program

@@ -63,15 +63,10 @@ VM::VM(size_t heap_block_size):
   objs.builtin_mul = make_builtin(vm, "mul", builtin_mul);
   objs.builtin_div = make_builtin(vm, "div", builtin_div);
   objs.builtin_modulo = make_builtin(vm, "modulo", builtin_modulo);
-  objs.builtin_is_cons = make_builtin(vm, "is_cons", builtin_is_cons);
   objs.builtin_cons = make_builtin(vm, "cons", builtin_cons);
   objs.builtin_first = make_builtin(vm, "first", builtin_first);
   objs.builtin_rest = make_builtin(vm, "rest", builtin_rest);
-  objs.builtin_is_symbol = make_builtin(vm, "is_symbol", builtin_is_symbol);
   objs.builtin_is_equal = make_builtin(vm, "is_equal", builtin_is_equal);
-  objs.builtin_is_nil = make_builtin(vm, "is_nil", builtin_is_nil);
-  objs.builtin_is_int = make_builtin(vm, "is_int", builtin_is_int);
-  objs.builtin_is_str = make_builtin(vm, "is_str", builtin_is_str);
   objs.builtin_concat = make_builtin(vm, "concat", builtin_concat);
   objs.builtin_split = make_builtin(vm, "split", builtin_split);
   objs.builtin_constructor = make_builtin(vm, "constructor", builtin_constructor);
@@ -84,15 +79,10 @@ VM::VM(size_t heap_block_size):
     Cons(syms.mul, objs.builtin_mul),
     Cons(syms.div, objs.builtin_div),
     Cons(syms.modulo, objs.builtin_modulo),
-    Cons(syms.is_cons, objs.builtin_is_cons),
     Cons(syms.Cons, objs.builtin_cons),
     Cons(syms.first, objs.builtin_first),
     Cons(syms.rest, objs.builtin_rest),
-    Cons(syms.is_symbol, objs.builtin_is_symbol),
     Cons(syms.is_equal, objs.builtin_is_equal),
-    Cons(syms.is_nil, objs.builtin_is_nil),
-    Cons(syms.is_str, objs.builtin_is_str),
-    Cons(syms.is_int, objs.builtin_is_int),
     Cons(syms.concat, objs.builtin_concat),
     Cons(syms.split, objs.builtin_split),
     Cons(syms.ctor, objs.builtin_constructor),

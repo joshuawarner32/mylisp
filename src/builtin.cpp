@@ -75,10 +75,6 @@ Value builtin_modulo(VM& vm, Value args) {
   });
 }
 
-Value builtin_is_cons(VM& vm, Value args) {
-  return singleValue(vm, args).isCons() ? vm.true_ : vm.false_;
-}
-
 Value builtin_cons(VM& vm, Value args) {
   return expandArgs2(vm, args, [&vm] (Value first, Value rest) {
     return vm.Cons(first, rest);
@@ -93,44 +89,22 @@ Value builtin_rest(VM& vm, Value args) {
   return cons_rest(vm, singleValue(vm, args));
 }
 
-Value builtin_is_symbol(VM& vm, Value args) {
-  return vm.Bool(singleValue(vm, args).isSymbol());
-}
-
 Value builtin_is_equal(VM& vm, Value args) {
   return expandArgs2(vm, args, [&vm] (Value a, Value b) {
     return vm.Bool(obj_equal(a, b));
   });
 }
 
-Value builtin_is_nil(VM& vm, Value args) {
-  return vm.Bool(singleValue(vm, args).isNil());
-}
-
-Value builtin_is_int(VM& vm, Value args) {
-  return vm.Bool(singleValue(vm, args).isInteger());
-}
-
-Value builtin_is_str(VM& vm, Value args) {
-  return vm.Bool(singleValue(vm, args).isString());
-}
-
 Value builtin_constructor(VM& vm, Value args) {
   switch(singleValue(vm, args)->type) {
-  case Object::Type::Nil:
-    return vm.syms.Nil;
-  case Object::Type::Cons:
-    return vm.syms.Cons;
-  case Object::Type::String:
-    return vm.syms.String;
-  case Object::Type::Integer:
-    return vm.syms.Integer;
-  case Object::Type::Symbol:
-    return vm.syms.Symbol;
-  case Object::Type::Builtin:
-    return vm.syms.Builtin;
-  case Object::Type::Bool:
-    return vm.syms.Bool;
+  case Object::Type::Nil:       return vm.syms.Nil;
+  case Object::Type::Cons:      return vm.syms.Cons;
+  case Object::Type::String:    return vm.syms.String;
+  case Object::Type::Integer:   return vm.syms.Integer;
+  case Object::Type::Symbol:    return vm.syms.Symbol;
+  case Object::Type::Builtin:   return vm.syms.Builtin;
+  case Object::Type::Bool:      return vm.syms.Bool;
+  case Object::Type::Lambda:    return vm.syms.Lambda;
   default:
     EXPECT(0);
     return 0;

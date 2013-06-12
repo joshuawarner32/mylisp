@@ -1,5 +1,11 @@
 (import core
-  (+ * concat split first rest cons eq? nil?))
+  (+ * concat split first rest cons eq? ctor))
+
+(define (nil? v) (eq? (ctor v) (quote Nil)))
+(define (cons? v) (eq? (ctor v) (quote cons)))
+(define (sym? v) (eq? (ctor v) (quote Symbol)))
+
+(define (nil? v) (eq? (ctor v) (quote Nil)))
 
 (define (or a b) (if a #t b))
 (define (not a) (if a #f #t))

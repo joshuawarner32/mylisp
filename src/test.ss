@@ -1,5 +1,7 @@
 (import core
-  (+ cons nil? first rest concat))
+  (+ cons first rest concat ctor))
+
+(define (nil? v) (eq? (ctor v) (quote Nil)))
 
 (define (addone x)
   (+ 1 x))

@@ -1,10 +1,15 @@
 
 (import core
   (concat split + - * /
-    modulo nil? cons?
-    sym? int? str? eq?
+    modulo eq?
     sym-name first rest
     ctor))
+
+(define (int? v) (eq? (ctor v) (quote Integer)))
+(define (str? v) (eq? (ctor v) (quote String)))
+(define (nil? v) (eq? (ctor v) (quote Nil)))
+(define (cons? v) (eq? (ctor v) (quote cons)))
+(define (sym? v) (eq? (ctor v) (quote Symbol)))
 
 (define (list-tostring value indent list-on-newline value-stringer)
   (if (nil? value) ")"
