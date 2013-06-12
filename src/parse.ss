@@ -74,6 +74,19 @@
       (if (eq? ch "f") (continue #f s)
         (concat "<parse-bool-error:" ch ">"))))))
 
+(define (parse-string-escaped val str continue)
+  (consume str (lambda (ch s)
+    (if (eq? ch "\"") (parse-string (concat val "\"") s continue)
+      (if (eq? ch "\\") (parse-string (concat val "\"") s continue)
+        (if (eq? ch "n") (parse-string (concat val "\n") s continue)
+          "<bad-escape>"))))))
+
+(define (parse-string val str continue)
+  (consume str (lambda (ch s)
+    (if (eq? ch "\\") (parse-string-escaped val s continue)
+      (if (eq? ch "\"") (continue val s)
+        (parse-string (concat val ch) s continue))))))
+
 (define (parse-list str continue)
   (let ((str (skip-whitespace str)))
     (consume str (lambda (ch s)
@@ -94,7 +107,9 @@
               (parse-symbol ch s continue)
               (if (eq? ch "#")
                 (parse-bool s continue)
-                "<parse-error>")))))))))
+                (if (eq? ch "\"")
+                  (parse-string "" s continue)
+                  "<parse-error>"))))))))))
 
-(parse-value " \n((1) (2 #f) 3 a) \n" (lambda (value str)
+(parse-value " \n((1) (2 #f) 3 a \"this \\\"is test\\n\" b) \n" (lambda (value str)
   value))
