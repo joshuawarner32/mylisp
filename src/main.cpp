@@ -650,7 +650,7 @@ void testParseAndEval() {
   }
 
   {
-    Value scons = vm.syms.cons;
+    Value scons = vm.syms.Cons;
     Value cons = vm.objs.builtin_cons;
 
     Value env = vm.List(vm.Cons(scons, cons));

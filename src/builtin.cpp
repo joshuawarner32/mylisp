@@ -115,6 +115,28 @@ Value builtin_is_str(VM& vm, Value args) {
   return vm.Bool(singleValue(vm, args).isString());
 }
 
+Value builtin_constructor(VM& vm, Value args) {
+  switch(singleValue(vm, args)->type) {
+  case Object::Type::Nil:
+    return vm.syms.Nil;
+  case Object::Type::Cons:
+    return vm.syms.Cons;
+  case Object::Type::String:
+    return vm.syms.String;
+  case Object::Type::Integer:
+    return vm.syms.Integer;
+  case Object::Type::Symbol:
+    return vm.syms.Symbol;
+  case Object::Type::Builtin:
+    return vm.syms.Builtin;
+  case Object::Type::Bool:
+    return vm.syms.Bool;
+  default:
+    EXPECT(0);
+    return 0;
+  }
+}
+
 Value builtin_concat(VM& vm, Value args) {
   StringBuffer buf;
   while(!args.isNil()) {

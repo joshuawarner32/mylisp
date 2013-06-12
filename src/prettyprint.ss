@@ -3,7 +3,8 @@
   (concat split + - * /
     modulo nil? cons?
     sym? int? str? eq?
-    sym-name first rest))
+    sym-name first rest
+    ctor))
 
 (define (list-tostring value indent list-on-newline value-stringer)
   (if (nil? value) ")"
@@ -54,6 +55,9 @@
 (define (escape-str s)
   (concat "\"" (escape-str-inner s) "\""))
 
+(define (bool-to-str s)
+  (if s "#t" "#f"))
+
 (define (value-tostring value indent list-on-newline)
   (if (nil? value) "()"
     (if (cons? value)
@@ -68,7 +72,9 @@
           (int-to-str value)
           (if (str? value)
             (escape-str value)
-            "<unknown>"))))))
+            (if (eq? (ctor value) (quote Bool))
+              (bool-to-str value)
+              "<unknown>")))))))
 
 (define (tostring value)
   (value-tostring value 0 #f))

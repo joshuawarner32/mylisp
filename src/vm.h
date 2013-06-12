@@ -89,6 +89,7 @@ public:
     Value builtin_concat;
     Value builtin_split;
     Value builtin_symbol_name;
+    Value builtin_constructor;
   } objs;
 
   Syms syms;

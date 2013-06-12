@@ -74,6 +74,7 @@ VM::VM(size_t heap_block_size):
   objs.builtin_is_str = make_builtin(vm, "is_str", builtin_is_str);
   objs.builtin_concat = make_builtin(vm, "concat", builtin_concat);
   objs.builtin_split = make_builtin(vm, "split", builtin_split);
+  objs.builtin_constructor = make_builtin(vm, "constructor", builtin_constructor);
   objs.builtin_symbol_name = make_builtin(vm, "symbol-name", builtin_symbol_name);
 
 
@@ -84,7 +85,7 @@ VM::VM(size_t heap_block_size):
     Cons(syms.div, objs.builtin_div),
     Cons(syms.modulo, objs.builtin_modulo),
     Cons(syms.is_cons, objs.builtin_is_cons),
-    Cons(syms.cons, objs.builtin_cons),
+    Cons(syms.Cons, objs.builtin_cons),
     Cons(syms.first, objs.builtin_first),
     Cons(syms.rest, objs.builtin_rest),
     Cons(syms.is_symbol, objs.builtin_is_symbol),
@@ -94,6 +95,7 @@ VM::VM(size_t heap_block_size):
     Cons(syms.is_int, objs.builtin_is_int),
     Cons(syms.concat, objs.builtin_concat),
     Cons(syms.split, objs.builtin_split),
+    Cons(syms.ctor, objs.builtin_constructor),
     Cons(syms.symbol_name, objs.builtin_symbol_name));
 }
 
