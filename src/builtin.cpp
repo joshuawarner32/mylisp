@@ -144,3 +144,7 @@ Value builtin_split(VM& vm, Value args) {
 Value builtin_symbol_name(VM& vm, Value args) {
   return make_string(vm, symbol_name(singleValue(vm, args)));
 }
+
+Value builtin_make_symbol(VM& vm, Value args) {
+  return vm.Symbol(string_value(singleValue(vm, args)));
+}

@@ -1,5 +1,5 @@
 (import core
-  (+ * concat split first rest cons eq? ctor))
+  (+ * concat split first rest cons eq? ctor make-sym))
 
 (define (nil? v) (eq? (ctor v) (quote Nil)))
 (define (cons? v) (eq? (ctor v) (quote cons)))
@@ -65,14 +65,11 @@
     (if (eq? key (first map)) (first (rest map))
       (lookup key (first (rest (rest map)))))))
 
-(define (make-symbol sym)
-  sym)
-
 (define (parse-symbol sym str continue)
   (consume str (lambda (ch s)
     (if (isletter ch)
       (parse-symbol (concat sym ch) s continue)
-      (continue (make-symbol sym) str)))))
+      (continue (make-sym sym) str)))))
 
 (define (parse-bool str continue)
   (consume str (lambda (ch s)

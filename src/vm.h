@@ -88,6 +88,7 @@ public:
     Value builtin_concat;
     Value builtin_split;
     Value builtin_symbol_name;
+    Value builtin_make_symbol;
     Value builtin_constructor;
   } objs;
 
@@ -96,6 +97,10 @@ public:
   Value core_imports;
 
   EvalFrame* currentEvalFrame = 0;
+
+  Value prettyPrinterImpl;
+  Value transformerImpl;
+  Value parserImpl;
 
   VM(size_t heap_block_size = 4096);
   ~VM();
@@ -116,6 +121,7 @@ public:
   inline Value Bool(bool value) { return value ? true_ : false_; }
 
   void print(Value value, int indent = 0, StandardStream stream = StandardStream::StdOut);
+  Value transform(Value value);
 
   void errorOccurred(const char* file, int line, const char* message);
 };

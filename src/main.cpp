@@ -7,8 +7,6 @@
 
 #include "serialize.h"
 #include "vm.h"
-#include "transform.h"
-#include "prettyprint.h"
 
 void _assert_failed(const char* file, int line, const char* message, ...) {
   fprintf(stderr, "assertion failure, %s:%d:\n  ", file, line);
@@ -755,8 +753,7 @@ Value run_file(VM& vm, const char* file, bool multiexpr) {
 }
 
 Value run_transform_file(VM& vm, const char* file) {
-  Transformer t(vm);
-  return t.transform(parse_file(vm, file, true));
+  return vm.transform(parse_file(vm, file, true));
 }
 
 int main(int argc, char** argv) {

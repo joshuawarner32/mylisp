@@ -6,7 +6,7 @@
 
 #include "vm.h"
 #include "builtin.h"
-#include "prettyprint.h"
+#include "serialize.h"
 
 struct heap_block_t {
   heap_block_t* next;
@@ -71,6 +71,7 @@ VM::VM(size_t heap_block_size):
   objs.builtin_split = make_builtin(vm, "split", builtin_split);
   objs.builtin_constructor = make_builtin(vm, "constructor", builtin_constructor);
   objs.builtin_symbol_name = make_builtin(vm, "symbol-name", builtin_symbol_name);
+  objs.builtin_make_symbol = make_builtin(vm, "make-symbol", builtin_make_symbol);
 
 
   core_imports = List(
@@ -86,7 +87,11 @@ VM::VM(size_t heap_block_size):
     Cons(syms.concat, objs.builtin_concat),
     Cons(syms.split, objs.builtin_split),
     Cons(syms.ctor, objs.builtin_constructor),
+    Cons(syms.make_symbol, objs.builtin_make_symbol),
     Cons(syms.symbol_name, objs.builtin_symbol_name));
+  prettyPrinterImpl = nil;
+  transformerImpl = nil;
+  parserImpl = nil;
 }
 
 VM::~VM() {
@@ -119,11 +124,39 @@ Value VM::Integer(int value) {
   return o;
 }
 
-void VM::print(Value value, int indent, StandardStream stream) {
-  if(!prettyPrinter) {
-    prettyPrinter = new PrettyPrinter(*this);
+extern const char binary_prettyprint_data[];
+extern const char binary_transform_data[];
+extern const char binary_parse_data[];
+
+Value eval(VM& vm, Value o, Map env);
+
+FILE* streamToFile(StandardStream stream) {
+  switch(stream) {
+  case StandardStream::StdOut:
+    return stdout;
+  case StandardStream::StdErr:
+    return stderr;
   }
-  prettyPrinter->print(value, indent, stream);
+}
+
+void VM::print(Value value, int indent, StandardStream stream) {
+  if(prettyPrinterImpl.isNil()) {
+    prettyPrinterImpl = eval(*this, deserialize(*this, binary_prettyprint_data), nil);
+  }
+  FILE* s = streamToFile(stream);
+  Value quoted_input = List(syms.quote, value);
+  Value str = eval(*this, List(prettyPrinterImpl, quoted_input, Integer(indent)), nil);
+  const char* data = string_value(str);
+  fprintf(s, "%s\n", data);
+}
+
+Value VM::transform(Value input) {
+  if(transformerImpl.isNil()) {
+    transformerImpl = eval(*this, deserialize(*this, binary_transform_data), nil);
+  }
+  Value quoted_input = List(syms.quote, input);
+  Value transformed = eval(*this, List(transformerImpl, quoted_input), nil);
+  return transformed;
 }
 
 void VM::errorOccurred(const char* file, int line, const char* message) {
