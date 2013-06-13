@@ -140,6 +140,7 @@ FILE* streamToFile(StandardStream stream) {
 }
 
 void VM::print(Value value, int indent, StandardStream stream) {
+  suppressInternalRecursion = true;
   if(prettyPrinterImpl.isNil()) {
     prettyPrinterImpl = eval(*this, deserialize(*this, binary_prettyprint_data), nil);
   }
@@ -148,23 +149,28 @@ void VM::print(Value value, int indent, StandardStream stream) {
   Value str = eval(*this, List(prettyPrinterImpl, quoted_input, Integer(indent)), nil);
   const char* data = string_value(str);
   fprintf(s, "%s\n", data);
+  suppressInternalRecursion = false;
 }
 
 Value VM::transform(Value input) {
+  suppressInternalRecursion = true;
   if(transformerImpl.isNil()) {
     transformerImpl = eval(*this, deserialize(*this, binary_transform_data), nil);
   }
   Value quoted_input = List(syms.quote, input);
   Value transformed = eval(*this, List(transformerImpl, quoted_input), nil);
+  suppressInternalRecursion = false;
   return transformed;
 }
 
-Value VM::parse(const char* text) {
+Value VM::parse(const char* text, bool multiexpr) {
+  suppressInternalRecursion = true;
   if(parserImpl.isNil()) {
     parserImpl = eval(*this, deserialize(*this, binary_parse_data), nil);
   }
   Value input = make_string(*this, text);
-  Value result = eval(*this, List(parserImpl, input), nil);
+  Value result = eval(*this, List(parserImpl, input, Bool(multiexpr)), nil);
+  suppressInternalRecursion = false;
   return result;
 }
 

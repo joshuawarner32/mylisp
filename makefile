@@ -12,7 +12,7 @@ run: $(executable) test
 	echo "running"
 	${<} src/test.ss
 
-boot: build/boot-1/transform.ss.bin build/boot-1/prettyprint.ss.bin build/boot-1/parse.ss.bin
+boot: build/boot-1/parse.ss.bin build/boot-1/transform.ss.bin build/boot-1/prettyprint.ss.bin
 	cp ${^} boot
 
 build/boot-1/%.ss.bin: $(executable) src/%.ss

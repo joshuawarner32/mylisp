@@ -14,16 +14,26 @@
   (func (first val) (rest val)))
 
 (define (consume str func)
-  (let ((parts (split str 1)))
-    (let ((ch (first parts))
-      (s (first (rest parts))))
-    (func ch s))))
+  (if (eq? str "") (func "" "")
+    (let ((parts (split str 1)))
+      (let ((ch (first parts))
+        (s (first (rest parts))))
+      (func ch s)))))
+
+(define (skip-comment str)
+  (consume str (lambda (ch s)
+    (if (or (eq? ch "\n") (eq? ch "")) s
+      (skip-comment s)))))
 
 (define (skip-whitespace str)
   (consume str (lambda (ch s)
     (if (or (eq? ch " ") (eq? ch "\n"))
       (skip-whitespace s)
-      str))))
+      (if (eq? ch ";")
+        (let ((s (skip-comment s)))
+          (if (eq? s "") ""
+            (skip-whitespace s)))
+        str)))))
 
 (define (parse-list str)
   (let ((str (skip-whitespace str)))
@@ -82,9 +92,9 @@
 (define (parse-string-escaped val str continue)
   (consume str (lambda (ch s)
     (if (eq? ch "\"") (parse-string (concat val "\"") s continue)
-      (if (eq? ch "\\") (parse-string (concat val "\"") s continue)
+      (if (eq? ch "\\") (parse-string (concat val "\\") s continue)
         (if (eq? ch "n") (parse-string (concat val "\n") s continue)
-          "<bad-escape>"))))))
+          (error "<bad-escape>:" ch ",in:" val)))))))
 
 (define (parse-string val str continue)
   (consume str (lambda (ch s)
@@ -114,8 +124,15 @@
                 (parse-bool s continue)
                 (if (eq? ch "\"")
                   (parse-string "" s continue)
-                  "<parse-error>"))))))))))
+                  (error "<parse-error>:" str) ))))))))))
 
-(lambda (str)
-  (parse-value str (lambda (val str)
-    val)))
+(define (parse str multiexpr)
+  (if multiexpr
+    (parse-value str (lambda (val str)
+      (let ((str (skip-whitespace str)))
+        (if (eq? str "") (cons val ())
+            (cons val (parse str multiexpr))))))
+    (parse-value str (lambda (val str)
+      val))))
+
+parse

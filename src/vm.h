@@ -102,6 +102,8 @@ public:
   Value transformerImpl;
   Value parserImpl;
 
+  bool suppressInternalRecursion = false;
+
   VM(size_t heap_block_size = 4096);
   ~VM();
 
@@ -122,7 +124,7 @@ public:
 
   void print(Value value, int indent = 0, StandardStream stream = StandardStream::StdOut);
   Value transform(Value value);
-  Value parse(const char* text);
+  Value parse(const char* text, bool multiexpr = false);
 
   void errorOccurred(const char* file, int line, const char* message);
 };

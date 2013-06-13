@@ -41,6 +41,10 @@ EvalFrame::EvalFrame(VM& vm, Value evaluating, Value env):
   env(env),
   previous(vm.currentEvalFrame)
 {
+  // if(!vm.suppressInternalRecursion) {
+  //   printf("debug: ");
+  //   vm.print(evaluating);
+  // }
   vm.currentEvalFrame = this;
 }
 
@@ -261,7 +265,7 @@ Value extend_env(VM& vm, Value params, Value args, Value env) {
       cons_rest(vm, args),
       vm.Cons(vm.Cons(key, value), env));
   } else {
-    EXPECT(args.isNil());
+    VM_EXPECT(vm, args.isNil());
     return env;
   }
 }
@@ -725,12 +729,14 @@ void saveBytes(const char* file, Data data) {
 Value parse_file(VM& vm, const char* file, bool multiexpr) {
   char* buf = loadBytes(file);
 
-  Value obj;
-  if(multiexpr) {
-    obj = parse_multi(vm, buf);
-  } else {
-    obj = vm.parse(buf);
-  }
+  Value obj = vm.parse(buf, multiexpr);
+  // vm.print(obj, printf("parsed:"));
+  // Value obj;
+  // if(multiexpr) {
+  //   return parse_multi(vm, buf);
+  // } else {
+  //   return vm.parse(buf);
+  // }
 
   free(buf);
 
@@ -743,7 +749,9 @@ Value run_file(VM& vm, const char* file, bool multiexpr) {
 }
 
 Value run_transform_file(VM& vm, const char* file) {
-  return vm.transform(parse_file(vm, file, true));
+  Value obj = vm.transform(parse_file(vm, file, true));
+  // vm.print(obj, printf("transformed:"));
+  return obj;
 }
 
 int main(int argc, char** argv) {
