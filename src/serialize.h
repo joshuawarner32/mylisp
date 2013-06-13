@@ -35,7 +35,7 @@ public:
   ~StringBuffer();
 
   void ensure(size_t len);
-  void append(const char* text);
+  void append(const char* text, size_t length);
   void append(char ch);
   char* str();
 };

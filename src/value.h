@@ -28,7 +28,8 @@ public:
       Object* rest;
     } as_cons;
     struct {
-      const char* value;
+      const char* text;
+      size_t length;
     } as_string;
     struct {
       int value;
@@ -90,9 +91,11 @@ size_t list_length(Value list);
 
 Value list_prepend_n_objs(VM& vm, size_t len, Value obj, Value list);
 
-Value make_string(VM& vm, const char* value);
+Value make_string(VM& vm, const char* value, size_t length);
 
-const char* string_value(Value o);
+const char* string_text(Value o);
+
+size_t string_length(Value o);
 
 int integer_value(VM& vm, Value o);
 

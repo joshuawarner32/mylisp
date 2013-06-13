@@ -147,8 +147,10 @@ void VM::print(Value value, int indent, StandardStream stream) {
   FILE* s = streamToFile(stream);
   Value quoted_input = List(syms.quote, value);
   Value str = eval(*this, List(prettyPrinterImpl, quoted_input, Integer(indent)), nil);
-  const char* data = string_value(str);
-  fprintf(s, "%s\n", data);
+  const char* data = string_text(str);
+  size_t length = string_length(str);
+  fwrite(data, 1, length, s);
+  fprintf(s, "\n");
   suppressInternalRecursion = false;
 }
 
@@ -168,7 +170,7 @@ Value VM::parse(const char* text, bool multiexpr) {
   if(parserImpl.isNil()) {
     parserImpl = eval(*this, deserialize(*this, binary_parse_data), nil);
   }
-  Value input = make_string(*this, text);
+  Value input = make_string(*this, text, strlen(text));
   Value result = eval(*this, List(parserImpl, input, Bool(multiexpr)), nil);
   suppressInternalRecursion = false;
   return result;

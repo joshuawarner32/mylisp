@@ -116,35 +116,40 @@ Value builtin_concat(VM& vm, Value args) {
   while(!args.isNil()) {
     Value a = cons_first(vm, args);
     args = cons_rest(vm, args);
-    buf.append(string_value(a));
+    buf.append(string_text(a), string_length(a));
   }
-  return make_string(vm, buf.str());
+  return make_string(vm, buf.str(), buf.used);
 }
 
-static Value _split(VM& vm, const char* str, Value indexes) {
+static Value _split(VM& vm, const char* str, size_t length, Value indexes) {
   if(indexes.isNil()) {
-    return vm.Cons(make_string(vm, str), vm.nil);
+    return vm.Cons(make_string(vm, str, length), vm.nil);
   } else {
     int l = integer_value(vm, cons_first(vm, indexes));
-    if(l > (int)strlen(str)) {
+    if(l > (int)length) {
       VM_ERROR(vm, "string index out of bounds");
     }
     return vm.Cons(
-      make_string(vm, strndup(str, l)),
-      _split(vm, str + l, cons_rest(vm, indexes)));
+      make_string(vm, str, l),
+      _split(vm, str + l, length - l, cons_rest(vm, indexes)));
   }
 }
 
 Value builtin_split(VM& vm, Value args) {
+  Value a = cons_first(vm, args);
   return _split(vm,
-    string_value(cons_first(vm, args)),
+    string_text(a),
+    string_length(a),
     cons_rest(vm, args));
 }
 
 Value builtin_symbol_name(VM& vm, Value args) {
-  return make_string(vm, symbol_name(singleValue(vm, args)));
+  const char* name = symbol_name(singleValue(vm, args));
+  return make_string(vm, name, strlen(name));
 }
 
 Value builtin_make_symbol(VM& vm, Value args) {
-  return vm.Symbol(string_value(singleValue(vm, args)));
+  Value a = singleValue(vm, args);
+  return vm.Symbol(
+    strndup(string_text(a), string_length(a)));
 }

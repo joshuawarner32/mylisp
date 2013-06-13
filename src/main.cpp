@@ -109,15 +109,21 @@ Value list_prepend_n_objs(VM& vm, size_t len, Value obj, Value list) {
   return list;
 }
 
-Value make_string(VM& vm, const char* value) {
+Value make_string(VM& vm, const char* value, size_t length) {
   Value o = new(vm) Object(Object::Type::String);
-  o->as_string.value = value;
+  o->as_string.text = value;
+  o->as_string.length = length;
   return o;
 }
 
-const char* string_value(Value o) {
+const char* string_text(Value o) {
   EXPECT(o.isString());
-  return o->as_string.value;
+  return o->as_string.text;
+}
+
+size_t string_length(Value o) {
+  EXPECT(o.isString());
+  return o->as_string.length;
 }
 
 int integer_value(VM& vm, Value o) {
@@ -225,7 +231,8 @@ bool obj_equal(Value a, Value b) {
     }
     return false;
   case Object::Type::String:
-    return strcmp(string_value(a), string_value(b)) == 0;
+    return string_length(a) == string_length(b) &&
+      memcmp(string_text(a), string_text(b), string_length(a)) == 0;
   case Object::Type::Integer:
     return a->as_integer.value == b->as_integer.value;
   case Object::Type::Symbol:
@@ -425,7 +432,7 @@ void testParse() {
 
   {
     Value res = vm.parse("\"a\"");
-    EXPECT(obj_equal(res, make_string(vm, "a")));
+    EXPECT(obj_equal(res, make_string(vm, "a", 1)));
   }
 
   {

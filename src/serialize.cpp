@@ -22,11 +22,10 @@ void StringBuffer::ensure(size_t len) {
   }
 }
 
-void StringBuffer::append(const char* text) {
-  size_t len = strlen(text);
-  ensure(len);
-  memcpy(buf + used, text, len + 1);
-  used += len;
+void StringBuffer::append(const char* text, size_t length) {
+  ensure(length);
+  memcpy(buf + used, text, length + 1);
+  used += length;
 }
 
 void StringBuffer::append(char ch) {
@@ -89,9 +88,10 @@ void serializeTo(StringBuffer& buf, Value value) {
     return;
   case Object::Type::String: {
     buf.append(SerializedData::STRING);
-    const char* data = string_value(value);
-    writeInt(buf, strlen(data));
-    buf.append(data);
+    const char* data = string_text(value);
+    size_t length = string_length(value);
+    writeInt(buf, length);
+    buf.append(data, length);
   } return;
   case Object::Type::Integer: {
     buf.append(SerializedData::INTEGER);
@@ -101,8 +101,9 @@ void serializeTo(StringBuffer& buf, Value value) {
   case Object::Type::Symbol: {
     buf.append(SerializedData::SYMBOL);
     const char* data = symbol_name(value);
-    writeInt(buf, strlen(data));
-    buf.append(data);
+    size_t length = strlen(data);
+    writeInt(buf, length);
+    buf.append(data, length);
   } return;
   case Object::Type::Builtin:
     buf.append(SerializedData::BUILTIN);
@@ -148,7 +149,7 @@ Value deserializeFrom(VM& vm, const char*& data) {
     memcpy(buf, data, len);
     buf[len] = 0;
     data += len;
-    return make_string(vm, buf);
+    return make_string(vm, buf, len);
   } break;
   case SerializedData::INTEGER: {
     int res = readInt(data);
