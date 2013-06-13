@@ -122,6 +122,7 @@ public:
 
   void print(Value value, int indent = 0, StandardStream stream = StandardStream::StdOut);
   Value transform(Value value);
+  Value parse(const char* text);
 
   void errorOccurred(const char* file, int line, const char* message);
 };

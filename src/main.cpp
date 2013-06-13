@@ -491,16 +491,6 @@ static Value parse_value(VM& vm, const char** text) {
   }
 }
 
-Value parse(VM& vm, const char* text) {
-  Value result = parse_value(vm, &text);
-  text = skip_ws(text);
-  if(*text != '\0') {
-    fprintf(stderr, "expected eof at [[[%s]]]\n", text);
-    EXPECT(0);
-  }
-  return result;
-}
-
 Value parse_multi(VM& vm, const char* text) {
   Value nil = vm.nil;
   Value result = nil;
@@ -553,27 +543,27 @@ void testParse() {
   VM vm;
 
   {
-    EXPECT_INT_EQ(integer_value(vm, parse(vm, "1")), 1);
-    EXPECT_INT_EQ(integer_value(vm, parse(vm, "42")), 42);
+    EXPECT_INT_EQ(integer_value(vm, vm.parse("1")), 1);
+    EXPECT_INT_EQ(integer_value(vm, vm.parse("42")), 42);
   }
 
   {
-    EXPECT(bool_value(parse(vm, "#t")) == true);
-    EXPECT(bool_value(parse(vm, "#f")) == false);
+    EXPECT(bool_value(vm.parse("#t")) == true);
+    EXPECT(bool_value(vm.parse("#f")) == false);
   }
 
   {
-    Value res = parse(vm, "a");
+    Value res = vm.parse("a");
     EXPECT(res.isSymbol());
   }
 
   {
-    Value res = parse(vm, "\"a\"");
+    Value res = vm.parse("\"a\"");
     EXPECT(obj_equal(res, make_string(vm, "a")));
   }
 
   {
-    Value res = parse(vm, "(a b)");
+    Value res = vm.parse("(a b)");
     Value a = vm.Symbol("a");
     Value b = vm.Symbol("b");
     EXPECT(cons_first(vm, res) == a);
@@ -641,7 +631,7 @@ void testParseAndEval() {
     Value pair = vm.Cons(plus, add);
     Value env = vm.Cons(pair, vm.nil);
 
-    Value input = parse(vm, "(+ 1 2)");
+    Value input = vm.parse("(+ 1 2)");
     Value res = eval(vm, input, env);
 
     EXPECT_INT_EQ(integer_value(vm, res), 3);
@@ -653,14 +643,14 @@ void testParseAndEval() {
 
     Value env = vm.List(vm.Cons(scons, cons));
 
-    Value input = parse(vm, "((letlambdas ( ((myfunc x y) (cons x y)) ) myfunc) 1 2)");
+    Value input = vm.parse("((letlambdas ( ((myfunc x y) (cons x y)) ) myfunc) 1 2)");
     Value res = eval(vm, input, env);
 
     EXPECT(obj_equal(res, vm.Cons(vm.Integer(1), vm.Integer(2))));
   }
 
   {
-    Value input = parse(vm, "((import core +) 1 2)");
+    Value input = vm.parse("((import core +) 1 2)");
     Value res = eval(vm, input, vm.nil);
 
     EXPECT_INT_EQ(integer_value(vm, res), 3);
@@ -739,7 +729,7 @@ Value parse_file(VM& vm, const char* file, bool multiexpr) {
   if(multiexpr) {
     obj = parse_multi(vm, buf);
   } else {
-    obj = parse(vm, buf);
+    obj = vm.parse(buf);
   }
 
   free(buf);

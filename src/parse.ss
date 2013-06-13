@@ -53,12 +53,13 @@
     ch))
 
 (define (parse-integer str value continue)
-  (consume str (lambda (ch s)
-    (let ((digit (digit-value ch)))
-      (if (nil? digit) (continue value str)
-        (parse-integer s
-          (+ (* 10 value) digit)
-          continue))))))
+  (if (eq? str "") (continue value str)
+    (consume str (lambda (ch s)
+      (let ((digit (digit-value ch)))
+        (if (nil? digit) (continue value str)
+          (parse-integer s
+            (+ (* 10 value) digit)
+            continue)))))))
 
 (define (lookup key map)
   (if (nil? map) (error)
@@ -66,10 +67,11 @@
       (lookup key (first (rest (rest map)))))))
 
 (define (parse-symbol sym str continue)
-  (consume str (lambda (ch s)
-    (if (isletter ch)
-      (parse-symbol (concat sym ch) s continue)
-      (continue (make-sym sym) str)))))
+  (if (eq? str "") (continue (make-sym sym) str)
+    (consume str (lambda (ch s)
+      (if (isletter ch)
+        (parse-symbol (concat sym ch) s continue)
+        (continue (make-sym sym) str))))))
 
 (define (parse-bool str continue)
   (consume str (lambda (ch s)
@@ -114,5 +116,6 @@
                   (parse-string "" s continue)
                   "<parse-error>"))))))))))
 
-(parse-value " \n((1) (2 #f) 3 a \"this \\\"is test\\n\" b) \n" (lambda (value str)
-  value))
+(lambda (str)
+  (parse-value str (lambda (val str)
+    val)))

@@ -159,6 +159,15 @@ Value VM::transform(Value input) {
   return transformed;
 }
 
+Value VM::parse(const char* text) {
+  if(parserImpl.isNil()) {
+    parserImpl = eval(*this, deserialize(*this, binary_parse_data), nil);
+  }
+  Value input = make_string(*this, text);
+  Value result = eval(*this, List(parserImpl, input), nil);
+  return result;
+}
+
 void VM::errorOccurred(const char* file, int line, const char* message) {
   fprintf(stderr, "error occurred: %s:%d: %s\n", file, line, message);
   currentEvalFrame->dump(StandardStream::StdErr);
