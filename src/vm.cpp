@@ -138,7 +138,7 @@ Value VM::makeString(const String& value) {
 
 Value VM::makeInteger(int value) {
   Value o = new(*this) Object(Object::Type::Integer);
-  o->as_integer.value = value;
+  o.asIntegerUnsafe() = value;
   return o;
 }
 

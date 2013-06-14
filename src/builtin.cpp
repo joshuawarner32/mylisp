@@ -8,7 +8,7 @@ Value builtin_add(VM& vm, Value args) {
   while(!args.isNil()) {
     Value a = cons_first(vm, args);
     args = cons_rest(vm, args);
-    res += integer_value(vm, a);
+    res += a.asInteger(vm);
   }
   return vm.makeInteger(res);
 }
@@ -19,14 +19,14 @@ Value builtin_sub(VM& vm, Value args) {
     Value a = cons_first(vm, args);
     args = cons_rest(vm, args);
     if(args.isNil()) {
-      return vm.makeInteger(-integer_value(vm, a));
+      return vm.makeInteger(-a.asInteger(vm));
     }
-    res = integer_value(vm, a);
+    res = a.asInteger(vm);
   }
   while(!args.isNil()) {
     Value a = cons_first(vm, args);
     args = cons_rest(vm, args);
-    res -= integer_value(vm, a);
+    res -= a.asInteger(vm);
   }
   return vm.makeInteger(res);
 }
@@ -36,19 +36,19 @@ Value builtin_mul(VM& vm, Value args) {
   while(!args.isNil()) {
     Value a = cons_first(vm, args);
     args = cons_rest(vm, args);
-    res *= integer_value(vm, a);
+    res *= a.asInteger(vm);
   }
   return vm.makeInteger(res);
 }
 
 Value builtin_div(VM& vm, Value args) {
   EXPECT(!args.isNil());
-  int res = integer_value(vm, cons_first(vm, args));
+  int res = cons_first(vm, args).asInteger(vm);
   args = cons_rest(vm, args);
   while(!args.isNil()) {
     Value a = cons_first(vm, args);
     args = cons_rest(vm, args);
-    res /= integer_value(vm, a);
+    res /= a.asInteger(vm);
   }
   return vm.makeInteger(res);
 }
@@ -71,7 +71,7 @@ Value singleValue(VM& vm, Value args) {
 Value builtin_modulo(VM& vm, Value args) {
   return expandArgs2(vm, args, [&vm] (Value a, Value b) {
     return vm.makeInteger(
-      integer_value(vm, a) % integer_value(vm, b));
+      a.asInteger(vm) % b.asInteger(vm));
   });
 }
 
@@ -125,7 +125,7 @@ static Value _split(VM& vm, const String& str, Value indexes) {
   if(indexes.isNil()) {
     return vm.makeCons(vm.makeString(str), vm.nil);
   } else {
-    int l = integer_value(vm, cons_first(vm, indexes));
+    int l = cons_first(vm, indexes).asInteger(vm);
     if(l > (int)str.length) {
       VM_ERROR(vm, "string index out of bounds");
     }

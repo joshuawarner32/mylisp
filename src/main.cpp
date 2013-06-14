@@ -110,11 +110,6 @@ Value list_prepend_n_objs(VM& vm, size_t len, Value obj, Value list) {
   return list;
 }
 
-int integer_value(VM& vm, Value o) {
-  VM_EXPECT(vm, o.isInteger());
-  return o->as_integer.value;
-}
-
 typedef Value Map;
 
 Value map_lookup(VM& vm, Map map, Value key) {
@@ -189,7 +184,7 @@ bool obj_equal(Value a, Value b) {
   case Object::Type::String:
     return a.asStringUnsafe() == b.asStringUnsafe();
   case Object::Type::Integer:
-    return a->as_integer.value == b->as_integer.value;
+    return a.asIntegerUnsafe() == b.asIntegerUnsafe();
   case Object::Type::Symbol:
   case Object::Type::Builtin:
     return a == b;
@@ -386,16 +381,16 @@ void testSymbols() {
     vm.makeCons(a, one),
     vm.makeCons(b, two));
 
-  EXPECT_INT_EQ(integer_value(vm, map_lookup(vm, map, a)), 1);
-  EXPECT_INT_EQ(integer_value(vm, map_lookup(vm, map, b)), 2);
+  EXPECT_INT_EQ(map_lookup(vm, map, a).asInteger(vm), 1);
+  EXPECT_INT_EQ(map_lookup(vm, map, b).asInteger(vm), 2);
 }
 
 void testParse() {
   VM vm;
 
   {
-    EXPECT_INT_EQ(integer_value(vm, vm.parse("1")), 1);
-    EXPECT_INT_EQ(integer_value(vm, vm.parse("42")), 42);
+    EXPECT_INT_EQ(vm.parse("1").asInteger(vm), 1);
+    EXPECT_INT_EQ(vm.parse("42").asInteger(vm), 42);
   }
 
   {
@@ -435,21 +430,21 @@ void testEval() {
   Value two = vm.makeInteger(2);
 
   {
-    EXPECT_INT_EQ(integer_value(vm, eval(vm, vm.makeInteger(1), vm.nil)), 1);
-    EXPECT_INT_EQ(integer_value(vm, eval(vm, vm.makeInteger(42), vm.nil)), 42);
+    EXPECT_INT_EQ(eval(vm, vm.makeInteger(1), vm.nil).asInteger(vm), 1);
+    EXPECT_INT_EQ(eval(vm, vm.makeInteger(42), vm.nil).asInteger(vm), 42);
   }
 
   {
     Value list = vm.makeList(add, one, two);
 
-    EXPECT_INT_EQ(integer_value(vm, eval(vm, list, vm.nil)), 3);
+    EXPECT_INT_EQ(eval(vm, list, vm.nil).asInteger(vm), 3);
   }
 
   {
     Value a = vm.makeSymbol("a");
     Value pair = vm.makeCons(a, vm.makeInteger(42));
     Value env = vm.makeCons(pair, vm.nil);
-    EXPECT_INT_EQ(integer_value(vm, eval(vm, a, env)), 42);
+    EXPECT_INT_EQ(eval(vm, a, env).asInteger(vm), 42);
   }
 
   {
@@ -457,17 +452,17 @@ void testEval() {
 
     Value pair = vm.makeCons(plus, add);
     Value env = vm.makeCons(pair, vm.nil);
-    EXPECT_INT_EQ(integer_value(vm, eval(vm, list, env)), 3);
+    EXPECT_INT_EQ(eval(vm, list, env).asInteger(vm), 3);
   }
 
   {
     Value list = vm.makeList(_if, _true, one, two);
-    EXPECT_INT_EQ(integer_value(vm, eval(vm, list, vm.nil)), 1);
+    EXPECT_INT_EQ(eval(vm, list, vm.nil).asInteger(vm), 1);
   }
 
   {
     Value list = vm.makeList(_if, _false, one, two);
-    EXPECT_INT_EQ(integer_value(vm, eval(vm, list, vm.nil)), 2);
+    EXPECT_INT_EQ(eval(vm, list, vm.nil).asInteger(vm), 2);
   }
 
 }
@@ -485,7 +480,7 @@ void testParseAndEval() {
     Value input = vm.parse("(+ 1 2)");
     Value res = eval(vm, input, env);
 
-    EXPECT_INT_EQ(integer_value(vm, res), 3);
+    EXPECT_INT_EQ(res.asInteger(vm), 3);
   }
 
   {
@@ -504,7 +499,7 @@ void testParseAndEval() {
     Value input = vm.parse("((import core +) 1 2)");
     Value res = eval(vm, input, vm.nil);
 
-    EXPECT_INT_EQ(integer_value(vm, res), 3);
+    EXPECT_INT_EQ(res.asInteger(vm), 3);
   }
 
 }

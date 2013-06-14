@@ -45,9 +45,7 @@ public:
       Object* rest;
     } as_cons;
     String as_string;
-    struct {
-      int value;
-    } as_integer;
+    int as_integer;
     String as_symbol;
     struct {
       const char* name;
@@ -92,10 +90,12 @@ public:
   inline String& asStringUnsafe() const { return obj->as_string; }
   inline String& asSymbolUnsafe() const { return obj->as_symbol; }
   inline bool& asBoolUnsafe() const { return obj->as_bool; }
+  inline int& asIntegerUnsafe() const { return obj->as_integer; }
 
   String& asString(VM& vm) const;
   String& asSymbol(VM& vm) const;
   bool& asBool(VM& vm) const;
+  int& asInteger(VM& vm) const;
 
   operator bool () const = delete;
 };
@@ -109,8 +109,6 @@ Value cons_rest(VM& vm, Value o);
 size_t list_length(Value list);
 
 Value list_prepend_n_objs(VM& vm, size_t len, Value obj, Value list);
-
-int integer_value(VM& vm, Value o);
 
 typedef Value Map;
 

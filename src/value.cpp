@@ -24,3 +24,8 @@ bool& Value::asBool(VM& vm) const {
   VM_EXPECT(vm, isBool());
   return asBoolUnsafe();
 }
+
+int& Value::asInteger(VM& vm) const {
+  VM_EXPECT(vm, isInteger());
+  return asIntegerUnsafe();
+}

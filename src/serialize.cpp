@@ -94,7 +94,7 @@ void serializeTo(StringBuffer& buf, Value value) {
   } return;
   case Object::Type::Integer: {
     buf.append(SerializedData::INTEGER);
-    int v = value->as_integer.value;
+    int v = value.asIntegerUnsafe();
     writeInt(buf, v);
   } return;
   case Object::Type::Symbol: {
