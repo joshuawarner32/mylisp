@@ -13,7 +13,6 @@ void _assert_failed(const char* file, int line, const char* message, ...);
   EXPECT_MSG((expected) == (actual), "expected: %d, actual: %d", expected, actual);
 
 #define ENABLE_ASSERTS
-#define ENABLE_DUHS
 
 #ifdef ENABLE_ASSERTS
 #define ASSERT(...) EXPECT(__VA_ARGS__)
@@ -21,14 +20,6 @@ void _assert_failed(const char* file, int line, const char* message, ...);
 #else
 #define ASSERT(...)
 #define ASSERT_MSG(...)
-#endif
-
-#ifdef ENABLE_DUHS
-#define DUH(...) EXPECT(__VA_ARGS__)
-#define DUH_MSG(...) EXPECT_MSG(__VA_ARGS__)
-#else
-#define DUH(...)
-#define DUH_MSG(...)
 #endif
 
 #define VM_ERROR(vm, message) \
