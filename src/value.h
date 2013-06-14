@@ -7,6 +7,12 @@ class Value;
 
 typedef Value (*BuiltinFunc)(VM& vm, Value args);
 
+class String {
+public:
+  const char* text;
+  size_t length;
+};
+
 class Object {
 public:
   enum class Type {
@@ -27,10 +33,7 @@ public:
       Object* first;
       Object* rest;
     } as_cons;
-    struct {
-      const char* text;
-      size_t length;
-    } as_string;
+    String as_string;
     struct {
       int value;
     } as_integer;
