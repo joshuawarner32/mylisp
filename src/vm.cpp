@@ -37,7 +37,7 @@ void free_heap_block(heap_block_t* h) {
 }
 
 Syms::Syms(VM& vm):
-#define SYM(cpp, lisp) cpp(vm.Symbol(lisp)),
+#define SYM(cpp, lisp) cpp(vm.makeSymbol(lisp)),
 #include "symbols.inc.h"
 #undef SYM
   dummy_value(0) {}
@@ -55,8 +55,8 @@ VM::VM(size_t heap_block_size):
 {
   VM& vm = *this;
 
-  true_->as_bool.value = true;
-  false_->as_bool.value = false;
+  true_->as_bool = true;
+  false_->as_bool = false;
 
   objs.builtin_add = make_builtin(vm, "add", builtin_add);
   objs.builtin_sub = make_builtin(vm, "sub", builtin_sub);
@@ -74,21 +74,21 @@ VM::VM(size_t heap_block_size):
   objs.builtin_make_symbol = make_builtin(vm, "make-symbol", builtin_make_symbol);
 
 
-  core_imports = List(
-    Cons(syms.add, objs.builtin_add),
-    Cons(syms.sub, objs.builtin_sub),
-    Cons(syms.mul, objs.builtin_mul),
-    Cons(syms.div, objs.builtin_div),
-    Cons(syms.modulo, objs.builtin_modulo),
-    Cons(syms.Cons, objs.builtin_cons),
-    Cons(syms.first, objs.builtin_first),
-    Cons(syms.rest, objs.builtin_rest),
-    Cons(syms.is_equal, objs.builtin_is_equal),
-    Cons(syms.concat, objs.builtin_concat),
-    Cons(syms.split, objs.builtin_split),
-    Cons(syms.ctor, objs.builtin_constructor),
-    Cons(syms.make_symbol, objs.builtin_make_symbol),
-    Cons(syms.symbol_name, objs.builtin_symbol_name));
+  core_imports = makeList(
+    makeCons(syms.add, objs.builtin_add),
+    makeCons(syms.sub, objs.builtin_sub),
+    makeCons(syms.mul, objs.builtin_mul),
+    makeCons(syms.div, objs.builtin_div),
+    makeCons(syms.modulo, objs.builtin_modulo),
+    makeCons(syms.Cons, objs.builtin_cons),
+    makeCons(syms.first, objs.builtin_first),
+    makeCons(syms.rest, objs.builtin_rest),
+    makeCons(syms.is_equal, objs.builtin_is_equal),
+    makeCons(syms.concat, objs.builtin_concat),
+    makeCons(syms.split, objs.builtin_split),
+    makeCons(syms.ctor, objs.builtin_constructor),
+    makeCons(syms.make_symbol, objs.builtin_make_symbol),
+    makeCons(syms.symbol_name, objs.builtin_symbol_name));
   prettyPrinterImpl = nil;
   transformerImpl = nil;
   parserImpl = nil;
@@ -107,18 +107,36 @@ void* VM::alloc(size_t size) {
   return ret;
 }
 
-Value VM::Cons(Value first, Value rest) {
+Value VM::makeCons(Value first, Value rest) {
   Value o = new(*this) Object(Object::Type::Cons);
   o->as_cons.first = first.getObj();
   o->as_cons.rest = rest.getObj();
   return o;
 }
 
-Value VM::Symbol(const char* name) {
-  return make_symbol_with_length(*this, name, strlen(name));
+Value VM::makeSymbol(const String& name) {
+  Value l = symList;
+  while(!l.isNil()) {
+    Value first = l->as_cons.first;
+    l = l->as_cons.rest;
+    const String& symName = first.asSymbolUnsafe();
+    if(symName == name) {
+      return first;
+    }
+  }
+  Value o = new(*this) Object(Object::Type::Symbol);
+  o.asSymbolUnsafe() = name;
+  symList = makeCons(o, symList);
+  return o;
 }
 
-Value VM::Integer(int value) {
+Value VM::makeString(const String& value) {
+  Value o = new(*this) Object(Object::Type::String);
+  o.asStringUnsafe() = value;
+  return o;
+}
+
+Value VM::makeInteger(int value) {
   Value o = new(*this) Object(Object::Type::Integer);
   o->as_integer.value = value;
   return o;
@@ -145,11 +163,10 @@ void VM::print(Value value, int indent, StandardStream stream) {
     prettyPrinterImpl = eval(*this, deserialize(*this, binary_prettyprint_data), nil);
   }
   FILE* s = streamToFile(stream);
-  Value quoted_input = List(syms.quote, value);
-  Value str = eval(*this, List(prettyPrinterImpl, quoted_input, Integer(indent)), nil);
-  const char* data = string_text(str);
-  size_t length = string_length(str);
-  fwrite(data, 1, length, s);
+  Value quoted_input = makeList(syms.quote, value);
+  Value str = eval(*this, makeList(prettyPrinterImpl, quoted_input, makeInteger(indent)), nil);
+  const String& data = str.asString(*this);
+  fwrite(data.text, 1, data.length, s);
   fprintf(s, "\n");
   suppressInternalRecursion = false;
 }
@@ -159,8 +176,8 @@ Value VM::transform(Value input) {
   if(transformerImpl.isNil()) {
     transformerImpl = eval(*this, deserialize(*this, binary_transform_data), nil);
   }
-  Value quoted_input = List(syms.quote, input);
-  Value transformed = eval(*this, List(transformerImpl, quoted_input), nil);
+  Value quoted_input = makeList(syms.quote, input);
+  Value transformed = eval(*this, makeList(transformerImpl, quoted_input), nil);
   suppressInternalRecursion = false;
   return transformed;
 }
@@ -170,8 +187,8 @@ Value VM::parse(const char* text, bool multiexpr) {
   if(parserImpl.isNil()) {
     parserImpl = eval(*this, deserialize(*this, binary_parse_data), nil);
   }
-  Value input = make_string(*this, text, strlen(text));
-  Value result = eval(*this, List(parserImpl, input, Bool(multiexpr)), nil);
+  Value input = makeString(text);
+  Value result = eval(*this, makeList(parserImpl, input, makeBool(multiexpr)), nil);
   suppressInternalRecursion = false;
   return result;
 }

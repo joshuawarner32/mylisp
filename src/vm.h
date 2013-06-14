@@ -97,18 +97,19 @@ public:
 
   void* alloc(size_t size);
 
-  Value Cons(Value first, Value rest);
+  Value makeCons(Value first, Value rest);
 
-  inline Value List() { return nil; }
+  inline Value makeList() { return nil; }
 
   template<class T, class... TS>
-  Value List(T t, TS... ts) {
-    return Cons(t, List(ts...));
+  Value makeList(T t, TS... ts) {
+    return makeCons(t, makeList(ts...));
   }
 
-  Value Symbol(const char* name);
-  Value Integer(int value);
-  inline Value Bool(bool value) { return value ? true_ : false_; }
+  Value makeSymbol(const String& name);
+  Value makeString(const String& value);
+  Value makeInteger(int value);
+  inline Value makeBool(bool value) { return value ? true_ : false_; }
 
   void print(Value value, int indent = 0, StandardStream stream = StandardStream::StdOut);
   Value transform(Value value);

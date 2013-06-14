@@ -10,7 +10,7 @@ Value builtin_add(VM& vm, Value args) {
     args = cons_rest(vm, args);
     res += integer_value(vm, a);
   }
-  return vm.Integer(res);
+  return vm.makeInteger(res);
 }
 
 Value builtin_sub(VM& vm, Value args) {
@@ -19,7 +19,7 @@ Value builtin_sub(VM& vm, Value args) {
     Value a = cons_first(vm, args);
     args = cons_rest(vm, args);
     if(args.isNil()) {
-      return vm.Integer(-integer_value(vm, a));
+      return vm.makeInteger(-integer_value(vm, a));
     }
     res = integer_value(vm, a);
   }
@@ -28,7 +28,7 @@ Value builtin_sub(VM& vm, Value args) {
     args = cons_rest(vm, args);
     res -= integer_value(vm, a);
   }
-  return vm.Integer(res);
+  return vm.makeInteger(res);
 }
 
 Value builtin_mul(VM& vm, Value args) {
@@ -38,7 +38,7 @@ Value builtin_mul(VM& vm, Value args) {
     args = cons_rest(vm, args);
     res *= integer_value(vm, a);
   }
-  return vm.Integer(res);
+  return vm.makeInteger(res);
 }
 
 Value builtin_div(VM& vm, Value args) {
@@ -50,7 +50,7 @@ Value builtin_div(VM& vm, Value args) {
     args = cons_rest(vm, args);
     res /= integer_value(vm, a);
   }
-  return vm.Integer(res);
+  return vm.makeInteger(res);
 }
 
 template<class Func>
@@ -70,14 +70,14 @@ Value singleValue(VM& vm, Value args) {
 
 Value builtin_modulo(VM& vm, Value args) {
   return expandArgs2(vm, args, [&vm] (Value a, Value b) {
-    return vm.Integer(
+    return vm.makeInteger(
       integer_value(vm, a) % integer_value(vm, b));
   });
 }
 
 Value builtin_cons(VM& vm, Value args) {
   return expandArgs2(vm, args, [&vm] (Value first, Value rest) {
-    return vm.Cons(first, rest);
+    return vm.makeCons(first, rest);
   });
 }
 
@@ -91,7 +91,7 @@ Value builtin_rest(VM& vm, Value args) {
 
 Value builtin_is_equal(VM& vm, Value args) {
   return expandArgs2(vm, args, [&vm] (Value a, Value b) {
-    return vm.Bool(obj_equal(a, b));
+    return vm.makeBool(obj_equal(a, b));
   });
 }
 
@@ -114,42 +114,39 @@ Value builtin_constructor(VM& vm, Value args) {
 Value builtin_concat(VM& vm, Value args) {
   StringBuffer buf;
   while(!args.isNil()) {
-    Value a = cons_first(vm, args);
+    const String& s = cons_first(vm, args).asString(vm);
     args = cons_rest(vm, args);
-    buf.append(string_text(a), string_length(a));
+    buf.append(s);
   }
-  return make_string(vm, buf.str(), buf.used);
+  return vm.makeString(buf.str());
 }
 
-static Value _split(VM& vm, const char* str, size_t length, Value indexes) {
+static Value _split(VM& vm, const String& str, Value indexes) {
   if(indexes.isNil()) {
-    return vm.Cons(make_string(vm, str, length), vm.nil);
+    return vm.makeCons(vm.makeString(str), vm.nil);
   } else {
     int l = integer_value(vm, cons_first(vm, indexes));
-    if(l > (int)length) {
+    if(l > (int)str.length) {
       VM_ERROR(vm, "string index out of bounds");
     }
-    return vm.Cons(
-      make_string(vm, str, l),
-      _split(vm, str + l, length - l, cons_rest(vm, indexes)));
+    return vm.makeCons(
+      vm.makeString(str.substr(0, l)),
+      _split(vm, str.substr(l, str.length - l), cons_rest(vm, indexes)));
   }
 }
 
 Value builtin_split(VM& vm, Value args) {
-  Value a = cons_first(vm, args);
+  String str = cons_first(vm, args).asString(vm);
   return _split(vm,
-    string_text(a),
-    string_length(a),
+    str,
     cons_rest(vm, args));
 }
 
 Value builtin_symbol_name(VM& vm, Value args) {
-  const char* name = symbol_name(singleValue(vm, args));
-  return make_string(vm, name, strlen(name));
+  return vm.makeString(singleValue(vm, args).asSymbol(vm));
 }
 
 Value builtin_make_symbol(VM& vm, Value args) {
-  Value a = singleValue(vm, args);
-  return vm.Symbol(
-    strndup(string_text(a), string_length(a)));
+  String str = singleValue(vm, args).asString(vm);
+  return vm.makeSymbol(str);
 }

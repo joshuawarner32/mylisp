@@ -22,10 +22,10 @@ void StringBuffer::ensure(size_t len) {
   }
 }
 
-void StringBuffer::append(const char* text, size_t length) {
-  ensure(length);
-  memcpy(buf + used, text, length + 1);
-  used += length;
+void StringBuffer::append(const String& value) {
+  ensure(value.length);
+  memcpy(buf + used, value.text, value.length);
+  used += value.length;
 }
 
 void StringBuffer::append(char ch) {
@@ -34,10 +34,10 @@ void StringBuffer::append(char ch) {
   buf[used] = 0;
 }
 
-char* StringBuffer::str() {
-  char* d = (char*) malloc(used + 1);
-  memcpy(d, buf, used + 1);
-  return d;
+String StringBuffer::str() {
+  char* d = (char*) malloc(used);
+  memcpy(d, buf, used);
+  return String(d, used);
 }
 
 void writeInt(StringBuffer& buf, int value) {
@@ -88,10 +88,9 @@ void serializeTo(StringBuffer& buf, Value value) {
     return;
   case Object::Type::String: {
     buf.append(SerializedData::STRING);
-    const char* data = string_text(value);
-    size_t length = string_length(value);
-    writeInt(buf, length);
-    buf.append(data, length);
+    const String& data = value.asStringUnsafe();
+    writeInt(buf, data.length);
+    buf.append(data);
   } return;
   case Object::Type::Integer: {
     buf.append(SerializedData::INTEGER);
@@ -100,17 +99,16 @@ void serializeTo(StringBuffer& buf, Value value) {
   } return;
   case Object::Type::Symbol: {
     buf.append(SerializedData::SYMBOL);
-    const char* data = symbol_name(value);
-    size_t length = strlen(data);
-    writeInt(buf, length);
-    buf.append(data, length);
+    const String& data = value.asSymbolUnsafe();
+    writeInt(buf, data.length);
+    buf.append(data);
   } return;
   case Object::Type::Builtin:
     buf.append(SerializedData::BUILTIN);
     writeInt(buf, builtin_id(value));
     return;
   case Object::Type::Bool:
-    buf.append(bool_value(value) ? SerializedData::BOOL_TRUE : SerializedData::BOOL_FALSE);
+    buf.append(value.asBoolUnsafe() ? SerializedData::BOOL_TRUE : SerializedData::BOOL_FALSE);
     return;
   case Object::Type::Lambda:
     buf.append(SerializedData::LAMBDA);
@@ -124,10 +122,10 @@ void serializeTo(StringBuffer& buf, Value value) {
   }
 }
 
-Data serialize(Value value) {
+String serialize(Value value) {
   StringBuffer buf;
   serializeTo(buf, value);
-  return Data(buf.str(), buf.used);
+  return buf.str();
 }
 
 Value deserializeFrom(VM& vm, const char*& data) {
@@ -141,7 +139,7 @@ Value deserializeFrom(VM& vm, const char*& data) {
     Value first = deserializeFrom(vm, data);
     Value rest = deserializeFrom(vm, data);
     depth--;
-    return vm.Cons(first, rest);
+    return vm.makeCons(first, rest);
   } break;
   case SerializedData::STRING: {
     int len = readInt(data);
@@ -149,11 +147,11 @@ Value deserializeFrom(VM& vm, const char*& data) {
     memcpy(buf, data, len);
     buf[len] = 0;
     data += len;
-    return make_string(vm, buf, len);
+    return vm.makeString(String(buf, len));
   } break;
   case SerializedData::INTEGER: {
     int res = readInt(data);
-    return vm.Integer(res);
+    return vm.makeInteger(res);
   } break;
   case SerializedData::SYMBOL: {
     int len = readInt(data);
@@ -161,7 +159,7 @@ Value deserializeFrom(VM& vm, const char*& data) {
     memcpy(buf, data, len);
     buf[len] = 0;
     data += len;
-    return vm.Symbol(buf);
+    return vm.makeSymbol(buf);
   } break;
   case SerializedData::BUILTIN: {
     int id = readInt(data);

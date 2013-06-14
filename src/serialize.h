@@ -1,5 +1,7 @@
 #include <stddef.h>
 
+#include "value.h"
+
 class SerializedData {
 public:
   enum Tag {
@@ -15,16 +17,6 @@ public:
   };
 };
 
-class Data {
-public:
-  const char* data;
-  size_t length;
-
-  Data(const char* data, size_t length):
-    data(data),
-    length(length) {}
-};
-
 class StringBuffer {
 public:
   size_t bufCapacity;
@@ -35,9 +27,9 @@ public:
   ~StringBuffer();
 
   void ensure(size_t len);
-  void append(const char* text, size_t length);
+  void append(const String& value);
   void append(char ch);
-  char* str();
+  String str();
 };
 
 class Value;
@@ -50,7 +42,7 @@ int readInt(const char*& data);
 
 void serializeTo(StringBuffer& buf, Value value);
 
-Data serialize(Value value);
+String serialize(Value value);
 
 Value deserializeFrom(VM& vm, const char*& data);
 
