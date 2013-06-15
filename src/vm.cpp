@@ -3,10 +3,24 @@
 #include <stdio.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include "vm.h"
 #include "builtin.h"
 #include "serialize.h"
+
+void _assert_failed(const char* file, int line, const char* message, ...) {
+  fprintf(stderr, "assertion failure, %s:%d:\n  ", file, line);
+
+  va_list ap;
+  va_start(ap, message);
+  vfprintf(stderr, message, ap);
+  va_end(ap);
+
+  fprintf(stderr, "\n");
+
+  exit(1);
+}
 
 struct heap_block_t {
   heap_block_t* next;
@@ -197,4 +211,189 @@ void VM::errorOccurred(const char* file, int line, const char* message) {
   fprintf(stderr, "error occurred: %s:%d: %s\n", file, line, message);
   currentEvalFrame->dump(StandardStream::StdErr);
   exit(1);
+}
+
+EvalFrame::EvalFrame(VM& vm, Value evaluating, Value env):
+  vm(vm),
+  evaluating(evaluating),
+  env(env),
+  previous(vm.currentEvalFrame)
+{
+  // if(!vm.suppressInternalRecursion) {
+  //   printf("debug: ");
+  //   vm.print(evaluating);
+  // }
+  vm.currentEvalFrame = this;
+}
+
+EvalFrame::~EvalFrame() {
+  vm.currentEvalFrame = previous;
+}
+
+static bool obj_mentions_symbol(Value obj, Value symbol) {
+  if(obj->type == Object::Type::Cons) {
+    return
+      obj_mentions_symbol(obj->as_cons.first, symbol) ||
+      obj_mentions_symbol(obj->as_cons.rest, symbol);
+  } else if(obj->type == Object::Type::Symbol) {
+    return obj == symbol;
+  } else {
+    return false;
+  }
+}
+
+void EvalFrame::dump(StandardStream stream) {
+  FILE* f = streamToFile(stream);
+  static const char prefix[] = "evaluating ";
+  fprintf(f, prefix);
+  vm.print(evaluating, strlen(prefix), stream);
+  Value end = previous ? previous->env : vm.nil;
+  while(!env.isNil() && env != end) {
+    ASSERT(env.isCons());
+    Value pair = env->as_cons.first;
+    env = env->as_cons.rest;
+    ASSERT(pair.isCons());
+    Value key = pair->as_cons.first;
+
+    if(obj_mentions_symbol(evaluating, key)) {
+      Value value = pair->as_cons.rest;
+      ASSERT(key.isSymbol());
+      const char* text = key->as_symbol.text;
+      size_t length = key->as_symbol.length;
+      int len = fprintf(f, "    where %*s = ", (int)length, text);
+      vm.print(value, len, stream);
+    }
+  }
+  if(previous) {
+    previous->dump(stream);
+  }
+}
+
+static Value list_prepend_n_objs(VM& vm, size_t len, Value obj, Value list) {
+  while(len > 0) {
+    list = vm.makeCons(obj, list);
+    len--;
+  }
+  return list;
+}
+
+static bool is_self_evaluating(Value o) {
+  return o.isInteger() || o.isNil() || o.isBuiltin() || o.isBool() || o.isLambda() || o.isString();
+}
+
+static Value extend_env(VM& vm, Value params, Value args, Value env) {
+  if(!params.isNil()) {
+    Value key = cons_first(vm, params);
+    EXPECT(key.isSymbol());
+    Value value = cons_first(vm, args);
+    return extend_env(vm,
+      cons_rest(vm, params),
+      cons_rest(vm, args),
+      vm.makeCons(vm.makeCons(key, value), env));
+  } else {
+    VM_EXPECT(vm, args.isNil());
+    return env;
+  }
+}
+
+static Value make_lambdas_env(VM& vm, Value lambdas, Value env) {
+  size_t len = list_length(lambdas);
+  Value orig_env = env;
+
+  env = list_prepend_n_objs(vm, len, vm.nil, env);
+
+  Value envptr = env;
+  while(!lambdas.isNil()) {
+    Value lambda = cons_first(vm, lambdas);
+
+    Value name_and_params = cons_first(vm, lambda);
+    lambda = cons_rest(vm, lambda);
+    VM_EXPECT(vm, cons_rest(vm, lambda).isNil());
+    Value body = cons_first(vm, lambda);
+
+    Value name = cons_first(vm, name_and_params);
+    EXPECT(name.isSymbol());
+    Value params = cons_rest(vm, name_and_params);
+
+    lambda = make_lambda(vm, params, body, env);
+
+    envptr->as_cons.first = vm.makeCons(name, lambda).getObj();
+    envptr = cons_rest(vm, envptr);
+
+    lambdas = cons_rest(vm, lambdas);
+  }
+
+  ASSERT(orig_env == envptr);
+
+  return env;
+}
+
+Value eval(VM& vm, Value o, Map env);
+static Value eval_list(VM& vm, Value o, Map env) {
+  if(o.isCons()) {
+    return vm.makeCons(eval(vm, cons_first(vm, o), env), eval_list(vm, cons_rest(vm, o), env));
+  } else {
+    return eval(vm, o, env);
+  }
+}
+
+Value eval(VM& vm, Value o, Map env) {
+  while(true) {
+    EvalFrame frame(vm, o, env);
+    if(is_self_evaluating(o)) {
+      return o;
+    } else if(o.isSymbol()) {
+      return map_lookup(vm, env, o);
+    } else if(o.isCons()) {
+
+      Value f = cons_first(vm, o);
+      o = cons_rest(vm, o);
+
+      if(f == vm.syms.if_) {
+        Value c = cons_first(vm, o);
+        c = eval(vm, c, env);
+        if(c.asBool(vm)) {
+          o = cons_first(vm, cons_rest(vm, o));
+        } else {
+          o = cons_first(vm, cons_rest(vm, cons_rest(vm, o)));
+        }
+      } else if(f == vm.syms.letlambdas) {
+        Value lambdas = cons_first(vm, o);
+        o = cons_rest(vm, o);
+        EXPECT(cons_rest(vm, o).isNil());
+        o = cons_first(vm, o);
+        env = make_lambdas_env(vm, lambdas, env);
+      } else if(f == vm.syms.import) {
+        Value lib = cons_first(vm, o);
+        o = cons_rest(vm, o);
+        Value sym = cons_first(vm, o);
+        EXPECT(cons_rest(vm, o).isNil());
+        EXPECT(lib == vm.syms.core);
+        return map_lookup(vm, vm.core_imports, sym);
+      } else if(f == vm.syms.quote) {
+        Value a = cons_first(vm, o);
+        EXPECT(cons_rest(vm, o).isNil());
+        return a;
+      } else {
+        f = eval(vm, f, env);
+        if(f.isBuiltin()) {
+          Value params = eval_list(vm, o, env);
+          EvalFrame builtinFrame(vm, vm.makeCons(f, params), env);
+          Value res = builtin_func(f)(vm, params);
+          return res;
+        } else if(f.isLambda()) {
+          Value params = eval_list(vm, o, env);
+          env = extend_env(vm, lambda_params(f), params, lambda_env(f));
+          o = lambda_body(f);
+        } else {
+          VM_ERROR(vm, "calling non-function value");
+          return 0;
+        }
+      }
+    } else {
+      VM_ERROR(vm, "unknown value type");
+      return 0;
+    }
+  }
+
 }

@@ -1,10 +1,25 @@
 MAKEFLAGS=-s
 
-sources = $(wildcard src/*.cpp)
-headers = $(wildcard src/*.h)
-objects = $(foreach x,$(sources),$(patsubst src/%.cpp,build/%.cpp.o,$(x)))
+vm-sources = $(wildcard src/*.cpp)
+vm-headers = $(wildcard src/*.h)
+vm-objects = $(foreach x,$(vm-sources),$(patsubst src/%.cpp,build/src/%.cpp.o,$(x)))
+
+test-sources = $(wildcard test/*.cpp)
+test-headers = $(wildcard test/*.h)
+test-objects = $(foreach x,$(test-sources),$(patsubst test/%.cpp,build/test/%.cpp.o,$(x)))
+
+main-sources = $(wildcard main/*.cpp)
+main-headers = $(wildcard main/*.h)
+main-objects = $(foreach x,$(main-sources),$(patsubst main/%.cpp,build/main/%.cpp.o,$(x)))
+
+objects = $(vm-objects) $(test-objects) $(main-objects)
+headers = $(vm-headers) $(test-headers) $(main-headers)
 
 executable = build/mylisp
+
+test-executable = build/test-mylisp
+
+embed-objects = build/transform-data.o build/prettyprint-data.o build/parse-data.o
 
 .PHONY: run boot test cloc
 
@@ -41,23 +56,28 @@ build/parse-data.gen.c: boot/parse.ss.bin
 %.o: %.gen.c
 	clang ${<} -c -o ${@}
 
-test: $(executable)
+test: $(test-executable)
 	echo "running tests"
-	${<} --test
+	${<}
+
+$(test-executable): $(vm-objects) $(test-objects) $(embed-objects)
+	mkdir -p $(dir ${@})
+	printf "linking   %12s %12s      %12s %12s\n" "" "" $(dir ${@}) $(notdir ${@})
+	clang++ -O0 -g3 -o ${@} ${^}
 
 cloc: $(wildcard src/*.cpp) $(wildcard src/*.h)
 	printf "lines of c++: "
 	(cloc $(^) --quiet --sql=-; echo "select sum(nCode) from t where Language in ('C++', 'C/C++ Header');")|sqlite3 :memory:
 
-$(executable): $(objects) build/transform-data.o build/prettyprint-data.o build/parse-data.o
+$(executable): $(vm-objects) $(main-objects) $(embed-objects)
 	mkdir -p $(dir ${@})
 	printf "linking   %12s %12s      %12s %12s\n" "" "" $(dir ${@}) $(notdir ${@})
 	clang++ -O0 -g3 -o ${@} ${^}
 
-$(objects): build/%.cpp.o: src/%.cpp $(headers)
+$(objects): build/%.cpp.o: %.cpp $(headers)
 	mkdir -p $(dir ${@})
 	printf "compiling %12s %12s   -> %12s %12s\n" $(dir ${<}) $(notdir ${<})  $(dir ${@}) $(notdir ${@})
-	clang++ -Wall -Werror -Wextra -Wno-unused-parameter -O0 -g3 -c -std=c++11 -o ${@} ${<}
+	clang++ -Wall -Werror -Wextra -Wno-unused-parameter -Isrc -O0 -g3 -c -std=c++11 -o ${@} ${<}
 
 .PHONY: clean
 clean:

@@ -86,7 +86,6 @@ public:
   inline bool isBool() const { return obj->type == Object::Type::Bool; }
   inline bool isLambda() const { return obj->type == Object::Type::Lambda; }
 
-
   inline String& asStringUnsafe() const { return obj->as_string; }
   inline String& asSymbolUnsafe() const { return obj->as_symbol; }
   inline bool& asBoolUnsafe() const { return obj->as_bool; }
@@ -108,8 +107,6 @@ Value cons_rest(VM& vm, Value o);
 
 size_t list_length(Value list);
 
-Value list_prepend_n_objs(VM& vm, size_t len, Value obj, Value list);
-
 typedef Value Map;
 
 Value map_lookup(VM& vm, Map map, Value key);
@@ -130,6 +127,8 @@ Value make_lambda(VM& vm, Value params, Value body, Value env);
 
 bool obj_equal(Value a, Value b);
 
-bool obj_mentions_symbol(Value obj, Value symbol);
+typedef Value Map;
+
+Value map_lookup(VM& vm, Map map, Value key);
 
 #endif

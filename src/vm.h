@@ -131,3 +131,5 @@ public:
 
   void dump(StandardStream stream);
 };
+
+Value eval(VM& vm, Value o, Map env);
