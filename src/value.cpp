@@ -39,6 +39,11 @@ int& Value::asInteger(VM& vm) const {
   return asIntegerUnsafe();
 }
 
+Lambda& Value::asLambda(VM& vm) const {
+  VM_EXPECT(vm, isLambda());
+  return asLambdaUnsafe();
+}
+
 
 Value cons_first(VM& vm, Value o) {
   VM_EXPECT(vm, o.isCons());
@@ -77,26 +82,11 @@ Value make_builtin(VM& vm, const char* name, BuiltinFunc func) {
   return o;
 }
 
-Value lambda_params(Value o) {
-  EXPECT(o.isLambda());
-  return o->as_lambda.params;
-}
-
-Value lambda_body(Value o) {
-  EXPECT(o.isLambda());
-  return o->as_lambda.body;
-}
-
-Value lambda_env(Value o) {
-  EXPECT(o.isLambda());
-  return o->as_lambda.env;
-}
-
 Value make_lambda(VM& vm, Value params, Value body, Value env) {
   Value o = new(vm) Object(Object::Type::Lambda);
-  o->as_lambda.params = params.getObj();
-  o->as_lambda.body = body.getObj();
-  o->as_lambda.env = env.getObj();
+  o->as_lambda.params = params;
+  o->as_lambda.body = body;
+  o->as_lambda.env = env;
   return o;
 }
 

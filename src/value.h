@@ -27,6 +27,7 @@ public:
 };
 
 class Cons;
+class Lambda;
 
 class Value {
 private:
@@ -55,12 +56,14 @@ public:
   inline String& asSymbolUnsafe() const;
   inline bool& asBoolUnsafe() const;
   inline int& asIntegerUnsafe() const;
+  inline Lambda& asLambdaUnsafe() const;
 
   Cons& asCons(VM& vm) const;
   String& asString(VM& vm) const;
   String& asSymbol(VM& vm) const;
   bool& asBool(VM& vm) const;
   int& asInteger(VM& vm) const;
+  Lambda& asLambda(VM& vm) const;
 
   operator bool () const = delete;
 };
@@ -69,6 +72,13 @@ class Cons {
 public:
   Value first;
   Value rest;
+};
+
+class Lambda {
+public:
+  Value params;
+  Value body;
+  Value env;
 };
 
 class Object {
@@ -96,11 +106,7 @@ public:
       BuiltinFunc func;
     } as_builtin;
     bool as_bool;
-    struct {
-      Object* params;
-      Object* body;
-      Object* env;
-    } as_lambda;
+    Lambda as_lambda;
   };
 
   Object(Type type): type(type) {}
@@ -122,6 +128,7 @@ String& Value::asStringUnsafe() const { return obj->as_string; }
 String& Value::asSymbolUnsafe() const { return obj->as_symbol; }
 bool& Value::asBoolUnsafe() const { return obj->as_bool; }
 int& Value::asIntegerUnsafe() const { return obj->as_integer; }
+Lambda& Value::asLambdaUnsafe() const { return obj->as_lambda; }
 
 Value make_builtin(VM& vm, const char* name, BuiltinFunc func);
 
@@ -136,12 +143,6 @@ BuiltinFunc builtin_func(Value o);
 const char* builtin_name(Value o);
 
 Value make_builtin(VM& vm, const char* name, BuiltinFunc func);
-
-Value lambda_params(Value o);
-
-Value lambda_body(Value o);
-
-Value lambda_env(Value o);
 
 Value make_lambda(VM& vm, Value params, Value body, Value env);
 

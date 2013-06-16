@@ -394,9 +394,10 @@ Value eval(VM& vm, Value o, Map env) {
           Value res = builtin_func(f)(vm, params);
           return res;
         } else if(f.isLambda()) {
+          Lambda l = f.asLambdaUnsafe();
           Value params = eval_list(vm, o, env);
-          env = extend_env(vm, lambda_params(f), params, lambda_env(f));
-          o = lambda_body(f);
+          env = extend_env(vm, l.params, params, l.env);
+          o = l.body;
         } else {
           VM_ERROR(vm, "calling non-function value");
           return 0;
