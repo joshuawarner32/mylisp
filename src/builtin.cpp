@@ -6,9 +6,9 @@
 Value builtin_add(VM& vm, Value args) {
   int res = 0;
   while(!args.isNil()) {
-    Value a = cons_first(vm, args);
-    args = cons_rest(vm, args);
-    res += a.asInteger(vm);
+    Cons c = args.asCons(vm);
+    res += c.first.asInteger(vm);
+    args = c.rest;
   }
   return vm.makeInteger(res);
 }
@@ -16,17 +16,18 @@ Value builtin_add(VM& vm, Value args) {
 Value builtin_sub(VM& vm, Value args) {
   int res;
   if(!args.isNil()) {
-    Value a = cons_first(vm, args);
-    args = cons_rest(vm, args);
+    Cons c = args.asCons(vm);
+    int i = c.first.asInteger(vm);
+    args = c.rest;
     if(args.isNil()) {
-      return vm.makeInteger(-a.asInteger(vm));
+      return vm.makeInteger(-i);
     }
-    res = a.asInteger(vm);
+    res = i;
   }
   while(!args.isNil()) {
-    Value a = cons_first(vm, args);
-    args = cons_rest(vm, args);
-    res -= a.asInteger(vm);
+    Cons c = args.asCons(vm);
+    res -= c.first.asInteger(vm);
+    args = c.rest;
   }
   return vm.makeInteger(res);
 }
@@ -34,38 +35,38 @@ Value builtin_sub(VM& vm, Value args) {
 Value builtin_mul(VM& vm, Value args) {
   int res = 1;
   while(!args.isNil()) {
-    Value a = cons_first(vm, args);
-    args = cons_rest(vm, args);
-    res *= a.asInteger(vm);
+    Cons c = args.asCons(vm);
+    res *= c.first.asInteger(vm);
+    args = c.rest;
   }
   return vm.makeInteger(res);
 }
 
 Value builtin_div(VM& vm, Value args) {
-  EXPECT(!args.isNil());
-  int res = cons_first(vm, args).asInteger(vm);
-  args = cons_rest(vm, args);
+  Cons c = args.asCons(vm);
+  int res = c.first.asInteger(vm);
   while(!args.isNil()) {
-    Value a = cons_first(vm, args);
-    args = cons_rest(vm, args);
-    res /= a.asInteger(vm);
+    c = args.asCons(vm);
+    res /= c.first.asInteger(vm);
+    args = c.rest;
   }
   return vm.makeInteger(res);
 }
 
 template<class Func>
 static Value expandArgs2(VM& vm, Value args, Func func) {
-  Value a = cons_first(vm, args);
-  args = cons_rest(vm, args);
-  Value b = cons_first(vm, args);
-  VM_EXPECT(vm, cons_rest(vm, args).isNil());
+  Cons c = args.asCons(vm);
+  Value a = c.first;
+  c = c.rest.asCons(vm);
+  Value b = c.first;
+  VM_EXPECT(vm, c.rest.isNil());
   return func(a, b);
 }
 
 Value singleValue(VM& vm, Value args) {
-  Value ret = cons_first(vm, args);
-  VM_EXPECT(vm, cons_rest(vm, args).isNil());
-  return ret;
+  Cons c = args.asCons(vm);
+  VM_EXPECT(vm, c.rest.isNil());
+  return c.first;
 }
 
 Value builtin_modulo(VM& vm, Value args) {
@@ -82,11 +83,11 @@ Value builtin_cons(VM& vm, Value args) {
 }
 
 Value builtin_first(VM& vm, Value args) {
-  return cons_first(vm, singleValue(vm, args));
+  return singleValue(vm, args).asCons(vm).first;
 }
 
 Value builtin_rest(VM& vm, Value args) {
-  return cons_rest(vm, singleValue(vm, args));
+  return singleValue(vm, args).asCons(vm).rest;
 }
 
 Value builtin_is_equal(VM& vm, Value args) {
@@ -114,9 +115,9 @@ Value builtin_constructor(VM& vm, Value args) {
 Value builtin_concat(VM& vm, Value args) {
   StringBuffer buf;
   while(!args.isNil()) {
-    const String& s = cons_first(vm, args).asString(vm);
-    args = cons_rest(vm, args);
-    buf.append(s);
+    Cons c = args.asCons(vm);
+    buf.append(c.first.asString(vm));
+    args = c.rest;
   }
   return vm.makeString(buf.str());
 }
@@ -125,21 +126,23 @@ static Value _split(VM& vm, const String& str, Value indexes) {
   if(indexes.isNil()) {
     return vm.makeCons(vm.makeString(str), vm.nil);
   } else {
-    int l = cons_first(vm, indexes).asInteger(vm);
+    Cons c = indexes.asCons(vm);
+    int l = c.first.asInteger(vm);
     if(l > (int)str.length) {
       VM_ERROR(vm, "string index out of bounds");
     }
     return vm.makeCons(
       vm.makeString(str.substr(0, l)),
-      _split(vm, str.substr(l, str.length - l), cons_rest(vm, indexes)));
+      _split(vm, str.substr(l, str.length - l), c.rest));
   }
 }
 
 Value builtin_split(VM& vm, Value args) {
-  String str = cons_first(vm, args).asString(vm);
+  Cons c = args.asCons(vm);
+  String str = c.first.asString(vm);
   return _split(vm,
     str,
-    cons_rest(vm, args));
+    c.rest);
 }
 
 Value builtin_symbol_name(VM& vm, Value args) {

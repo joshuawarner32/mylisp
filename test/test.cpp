@@ -85,9 +85,7 @@ void testParse() {
     Value res = vm.parse("(a b)");
     Value a = vm.makeSymbol("a");
     Value b = vm.makeSymbol("b");
-    EXPECT(cons_first(vm, res) == a);
-    EXPECT(cons_first(vm, cons_rest(vm, res)) == b);
-    EXPECT(cons_rest(vm, cons_rest(vm, res)).isNil());
+    EXPECT(obj_equal(res, vm.makeList(a, b)));
   }
 }
 

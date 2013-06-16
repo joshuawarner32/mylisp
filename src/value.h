@@ -9,6 +9,8 @@ class Value;
 
 typedef Value (*BuiltinFunc)(VM& vm, Value args);
 
+class Object;
+
 class String {
 public:
   const char* text;
@@ -22,6 +24,51 @@ public:
   }
 
   bool operator == (const String& other) const;
+};
+
+class Cons;
+
+class Value {
+private:
+  Object* obj;
+
+public:
+  inline Value(): obj(0) {}
+  inline Value(Object* obj): obj(obj) {}
+
+  inline Object*& getObj() { return obj; }
+  inline Object* operator -> () { return obj; }
+  inline bool operator == (const Value& other) const { return obj == other.obj; }
+  inline bool operator != (const Value& other) const { return obj != other.obj; }
+
+  inline bool isNil() const;
+  inline bool isCons() const;
+  inline bool isString() const;
+  inline bool isInteger() const;
+  inline bool isSymbol() const;
+  inline bool isBuiltin() const;
+  inline bool isBool() const;
+  inline bool isLambda() const;
+
+  inline Cons& asConsUnsafe() const;
+  inline String& asStringUnsafe() const;
+  inline String& asSymbolUnsafe() const;
+  inline bool& asBoolUnsafe() const;
+  inline int& asIntegerUnsafe() const;
+
+  Cons& asCons(VM& vm) const;
+  String& asString(VM& vm) const;
+  String& asSymbol(VM& vm) const;
+  bool& asBool(VM& vm) const;
+  int& asInteger(VM& vm) const;
+
+  operator bool () const = delete;
+};
+
+class Cons {
+public:
+  Value first;
+  Value rest;
 };
 
 class Object {
@@ -40,10 +87,7 @@ public:
   Type type;
 
   union {
-    struct {
-      Object* first;
-      Object* rest;
-    } as_cons;
+    Cons as_cons;
     String as_string;
     int as_integer;
     String as_symbol;
@@ -64,46 +108,22 @@ public:
   inline void* operator new (size_t size, VM& vm);
 };
 
-class Value {
-private:
-  Object* obj;
+bool Value::isNil() const { return obj->type == Object::Type::Nil; }
+bool Value::isCons() const { return obj->type == Object::Type::Cons; }
+bool Value::isString() const { return obj->type == Object::Type::String; }
+bool Value::isInteger() const { return obj->type == Object::Type::Integer; }
+bool Value::isSymbol() const { return obj->type == Object::Type::Symbol; }
+bool Value::isBuiltin() const { return obj->type == Object::Type::Builtin; }
+bool Value::isBool() const { return obj->type == Object::Type::Bool; }
+bool Value::isLambda() const { return obj->type == Object::Type::Lambda; }
 
-public:
-  inline Value(): obj(0) {}
-  inline Value(Object* obj): obj(obj) {}
-
-  inline Object*& getObj() { return obj; }
-  inline Object* operator -> () { return obj; }
-  inline bool operator == (const Value& other) const { return obj == other.obj; }
-  inline bool operator != (const Value& other) const { return obj != other.obj; }
-
-  inline bool isNil() const { return obj->type == Object::Type::Nil; }
-  inline bool isCons() const { return obj->type == Object::Type::Cons; }
-  inline bool isString() const { return obj->type == Object::Type::String; }
-  inline bool isInteger() const { return obj->type == Object::Type::Integer; }
-  inline bool isSymbol() const { return obj->type == Object::Type::Symbol; }
-  inline bool isBuiltin() const { return obj->type == Object::Type::Builtin; }
-  inline bool isBool() const { return obj->type == Object::Type::Bool; }
-  inline bool isLambda() const { return obj->type == Object::Type::Lambda; }
-
-  inline String& asStringUnsafe() const { return obj->as_string; }
-  inline String& asSymbolUnsafe() const { return obj->as_symbol; }
-  inline bool& asBoolUnsafe() const { return obj->as_bool; }
-  inline int& asIntegerUnsafe() const { return obj->as_integer; }
-
-  String& asString(VM& vm) const;
-  String& asSymbol(VM& vm) const;
-  bool& asBool(VM& vm) const;
-  int& asInteger(VM& vm) const;
-
-  operator bool () const = delete;
-};
+Cons& Value::asConsUnsafe() const { return obj->as_cons; }
+String& Value::asStringUnsafe() const { return obj->as_string; }
+String& Value::asSymbolUnsafe() const { return obj->as_symbol; }
+bool& Value::asBoolUnsafe() const { return obj->as_bool; }
+int& Value::asIntegerUnsafe() const { return obj->as_integer; }
 
 Value make_builtin(VM& vm, const char* name, BuiltinFunc func);
-
-Value cons_first(VM& vm, Value o);
-
-Value cons_rest(VM& vm, Value o);
 
 size_t list_length(Value list);
 

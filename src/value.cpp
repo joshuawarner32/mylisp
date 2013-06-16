@@ -14,6 +14,11 @@ void* Object::operator new (size_t size, VM& vm) {
   return vm.alloc(size);
 }
 
+Cons& Value::asCons(VM& vm) const {
+  VM_EXPECT(vm, isCons());
+  return asConsUnsafe();
+}
+
 String& Value::asSymbol(VM& vm) const {
   VM_EXPECT(vm, isSymbol());
   return asSymbolUnsafe();

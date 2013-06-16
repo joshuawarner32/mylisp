@@ -283,12 +283,14 @@ static bool is_self_evaluating(Value o) {
 
 static Value extend_env(VM& vm, Value params, Value args, Value env) {
   if(!params.isNil()) {
-    Value key = cons_first(vm, params);
+    Cons cp = params.asCons(vm);
+    Cons ca = args.asCons(vm);
+    Value key = cp.first;
     EXPECT(key.isSymbol());
-    Value value = cons_first(vm, args);
+    Value value = ca.first;
     return extend_env(vm,
-      cons_rest(vm, params),
-      cons_rest(vm, args),
+      cp.rest,
+      ca.rest,
       vm.makeCons(vm.makeCons(key, value), env));
   } else {
     VM_EXPECT(vm, args.isNil());
@@ -304,23 +306,27 @@ static Value make_lambdas_env(VM& vm, Value lambdas, Value env) {
 
   Value envptr = env;
   while(!lambdas.isNil()) {
-    Value lambda = cons_first(vm, lambdas);
+    Cons c = lambdas.asCons(vm);
+    Value lambda = c.first;
 
-    Value name_and_params = cons_first(vm, lambda);
-    lambda = cons_rest(vm, lambda);
-    VM_EXPECT(vm, cons_rest(vm, lambda).isNil());
-    Value body = cons_first(vm, lambda);
+    Cons cl = lambda.asCons(vm);
+    Value name_and_params = cl.first;
+    lambda = cl.rest;
+    cl = cl.rest.asCons(vm);
+    VM_EXPECT(vm, cl.rest.isNil());
+    Value body = cl.first;
 
-    Value name = cons_first(vm, name_and_params);
+    cl = name_and_params.asCons(vm);
+    Value name = cl.first;
     EXPECT(name.isSymbol());
-    Value params = cons_rest(vm, name_and_params);
+    Value params = cl.rest;
 
     lambda = make_lambda(vm, params, body, env);
 
-    envptr->as_cons.first = vm.makeCons(name, lambda).getObj();
-    envptr = cons_rest(vm, envptr);
+    envptr->as_cons.first = vm.makeCons(name, lambda);
+    envptr = envptr.asCons(vm).rest;
 
-    lambdas = cons_rest(vm, lambdas);
+    lambdas = c.rest;
   }
 
   ASSERT(orig_env == envptr);
@@ -331,7 +337,8 @@ static Value make_lambdas_env(VM& vm, Value lambdas, Value env) {
 Value eval(VM& vm, Value o, Map env);
 static Value eval_list(VM& vm, Value o, Map env) {
   if(o.isCons()) {
-    return vm.makeCons(eval(vm, cons_first(vm, o), env), eval_list(vm, cons_rest(vm, o), env));
+    Cons c = o.asConsUnsafe();
+    return vm.makeCons(eval(vm, c.first, env), eval_list(vm, c.rest, env));
   } else {
     return eval(vm, o, env);
   }
@@ -345,34 +352,39 @@ Value eval(VM& vm, Value o, Map env) {
     } else if(o.isSymbol()) {
       return map_lookup(vm, env, o);
     } else if(o.isCons()) {
-
-      Value f = cons_first(vm, o);
-      o = cons_rest(vm, o);
+      Cons c = o.asConsUnsafe();
+      Value f = c.first;
+      o = c.rest;
 
       if(f == vm.syms.if_) {
-        Value c = cons_first(vm, o);
-        c = eval(vm, c, env);
-        if(c.asBool(vm)) {
-          o = cons_first(vm, cons_rest(vm, o));
-        } else {
-          o = cons_first(vm, cons_rest(vm, cons_rest(vm, o)));
-        }
+        c = o.asCons(vm);
+        Value cond = c.first;
+        cond = eval(vm, cond, env);
+        c = c.rest.asCons(vm);
+        Value t = c.first;
+        c = c.rest.asCons(vm);
+        Value f = c.first;
+        VM_EXPECT(vm, c.rest.isNil());
+        o = cond.asBool(vm) ? t : f;
       } else if(f == vm.syms.letlambdas) {
-        Value lambdas = cons_first(vm, o);
-        o = cons_rest(vm, o);
-        EXPECT(cons_rest(vm, o).isNil());
-        o = cons_first(vm, o);
+        c = o.asCons(vm);
+        Value lambdas = c.first;
+        c = c.rest.asCons(vm);
+        EXPECT(c.rest.isNil());
+        o = c.first;
         env = make_lambdas_env(vm, lambdas, env);
       } else if(f == vm.syms.import) {
-        Value lib = cons_first(vm, o);
-        o = cons_rest(vm, o);
-        Value sym = cons_first(vm, o);
-        EXPECT(cons_rest(vm, o).isNil());
+        c = o.asCons(vm);
+        Value lib = c.first;
+        c = c.rest.asCons(vm);
+        Value sym = c.first;
+        EXPECT(c.rest.isNil());
         EXPECT(lib == vm.syms.core);
         return map_lookup(vm, vm.core_imports, sym);
       } else if(f == vm.syms.quote) {
-        Value a = cons_first(vm, o);
-        EXPECT(cons_rest(vm, o).isNil());
+        c = o.asCons(vm);
+        Value a = c.first;
+        EXPECT(c.rest.isNil());
         return a;
       } else {
         f = eval(vm, f, env);
