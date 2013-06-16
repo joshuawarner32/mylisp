@@ -92,7 +92,7 @@ Value builtin_rest(VM& vm, Value args) {
 
 Value builtin_is_equal(VM& vm, Value args) {
   return expandArgs2(vm, args, [&vm] (Value a, Value b) {
-    return vm.makeBool(obj_equal(a, b));
+    return vm.makeBool(a == b);
   });
 }
 

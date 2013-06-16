@@ -100,31 +100,32 @@ Value make_lambda(VM& vm, Value params, Value body, Value env) {
   return o;
 }
 
-bool obj_equal(Value a, Value b) {
-  if(a->type != b->type) {
+bool Value::operator == (const Value& other) const {
+  if(obj == other.obj) {
+    return true;
+  }
+  if(obj->type != other.obj->type) {
     return false;
   }
-  switch(a->type) {
+  switch(obj->type) {
   case Object::Type::Nil:
-    ASSERT(b.isNil() == (a == b));
-    return b.isNil();
-  case Object::Type::Cons:
-    if(obj_equal(a->as_cons.first, a->as_cons.first)) {
-      if(obj_equal(a->as_cons.rest, b->as_cons.rest)) {
-        return true;
-      }
-    }
-    return false;
+    ASSERT(other.isNil() == (obj == other.obj));
+    return other.isNil();
+  case Object::Type::Cons: {
+    Cons ca = asConsUnsafe();
+    Cons cb = other.asConsUnsafe();
+    return ca.first == cb.first && ca.rest == cb.rest;
+  } break;
   case Object::Type::String:
-    return a.asStringUnsafe() == b.asStringUnsafe();
+    return asStringUnsafe() == other.asStringUnsafe();
   case Object::Type::Integer:
-    return a.asIntegerUnsafe() == b.asIntegerUnsafe();
+    return asIntegerUnsafe() == other.asIntegerUnsafe();
+  case Object::Type::Bool:
+    ASSERT( (obj == other.obj) == (asBoolUnsafe() == other.asBoolUnsafe()) );
+    // fallthrough
   case Object::Type::Symbol:
   case Object::Type::Builtin:
-    return a == b;
-  case Object::Type::Bool:
-    ASSERT( (a == b) == (a.asBoolUnsafe() == b.asBoolUnsafe()) );
-    return a == b;
+    return obj == other.obj;
   default:
     EXPECT(0);
     return false;

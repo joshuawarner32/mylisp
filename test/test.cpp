@@ -13,25 +13,25 @@ void testMakeList() {
   {
     Value a = vm.makeList();
     Value b = vm.nil;
-    EXPECT(obj_equal(a, b));
+    EXPECT(a == b);
   }
 
   {
     Value a = vm.makeList(one);
     Value b = vm.makeCons(one, vm.nil);
-    EXPECT(obj_equal(a, b));
+    EXPECT(a == b);
   }
 
   {
     Value a = vm.makeList(one, two);
     Value b = vm.makeCons(one, vm.makeCons(two, vm.nil));
-    EXPECT(obj_equal(a, b));
+    EXPECT(a == b);
   }
 
   {
     Value a = vm.makeList(one, two, three);
     Value b = vm.makeCons(one, vm.makeCons(two, vm.makeCons(three, vm.nil)));
-    EXPECT(obj_equal(a, b));
+    EXPECT(a == b);
   }
 
 }
@@ -78,14 +78,14 @@ void testParse() {
 
   {
     Value res = vm.parse("\"a\"");
-    EXPECT(obj_equal(res, vm.makeString("a")));
+    EXPECT(res == vm.makeString("a"));
   }
 
   {
     Value res = vm.parse("(a b)");
     Value a = vm.makeSymbol("a");
     Value b = vm.makeSymbol("b");
-    EXPECT(obj_equal(res, vm.makeList(a, b)));
+    EXPECT(res == vm.makeList(a, b));
   }
 }
 
@@ -163,7 +163,7 @@ void testParseAndEval() {
     Value input = vm.parse("((letlambdas ( ((myfunc x y) (cons x y)) ) myfunc) 1 2)");
     Value res = eval(vm, input, env);
 
-    EXPECT(obj_equal(res, vm.makeCons(vm.makeInteger(1), vm.makeInteger(2))));
+    EXPECT(res == vm.makeCons(vm.makeInteger(1), vm.makeInteger(2)));
   }
 
   {
@@ -182,21 +182,21 @@ void testSerialize() {
     Value original = vm.nil;
     String serialized = serialize(original);
     Value deserialized = deserialize(vm, serialized.text);
-    EXPECT(obj_equal(deserialized, original));
+    EXPECT(deserialized == original);
   }
 
   {
     Value original = vm.makeInteger(0);
     String serialized = serialize(original);
     Value deserialized = deserialize(vm, serialized.text);
-    EXPECT(obj_equal(deserialized, original));
+    EXPECT(deserialized == original);
   }
 
   {
     Value original = vm.makeInteger(1);
     String serialized = serialize(original);
     Value deserialized = deserialize(vm, serialized.text);
-    EXPECT(obj_equal(deserialized, original));
+    EXPECT(deserialized == original);
   }
 
   {
@@ -209,7 +209,7 @@ void testSerialize() {
       vm.makeInteger(5));
     String serialized = serialize(original);
     Value deserialized = deserialize(vm, serialized.text);
-    EXPECT(obj_equal(deserialized, original));
+    EXPECT(deserialized == original);
   }
 }
 

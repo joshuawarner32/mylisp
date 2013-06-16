@@ -38,8 +38,8 @@ public:
 
   inline Object*& getObj() { return obj; }
   inline Object* operator -> () { return obj; }
-  inline bool operator == (const Value& other) const { return obj == other.obj; }
-  inline bool operator != (const Value& other) const { return obj != other.obj; }
+  bool operator == (const Value& other) const;
+  inline bool operator != (const Value& other) const { return !(*this == other); }
 
   inline bool isNil() const;
   inline bool isCons() const;
@@ -144,8 +144,6 @@ Value lambda_body(Value o);
 Value lambda_env(Value o);
 
 Value make_lambda(VM& vm, Value params, Value body, Value env);
-
-bool obj_equal(Value a, Value b);
 
 typedef Value Map;
 
