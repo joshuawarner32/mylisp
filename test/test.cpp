@@ -2,6 +2,7 @@
 
 #include "vm.h"
 #include "serialize.h"
+#include "interpret.h"
 
 void testMakeList() {
   VM vm;
@@ -213,6 +214,18 @@ void testSerialize() {
   }
 }
 
+
+void testInterpret() {
+  VM vm;
+  
+  const unsigned unsigned char instrs[] = {Opcode::Call};
+
+  Frame frame;
+  frame.ip = instrs;
+
+  interpret(vm, &frame);
+}
+
 void testAll() {
   testMakeList();
   testSymbols();
@@ -220,6 +233,7 @@ void testAll() {
   testEval();
   testParseAndEval();
   testSerialize();
+  testInterpret();
 }
 
 int main(int argc, char** argv) {
