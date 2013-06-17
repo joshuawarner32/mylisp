@@ -218,12 +218,22 @@ void testSerialize() {
 void testInterpret() {
   VM vm;
   
-  const unsigned unsigned char instrs[] = {Opcode::Call};
+  Value values[] = {
+    vm.makeInteger(1),
+    vm.makeInteger(2),
+    vm.makeInteger(-1),
+  };
+
+  const unsigned char instrs[] = {Opcode::Add, 0, 1, 2, Opcode::Call};
 
   Frame frame;
   frame.ip = instrs;
+  frame.values = values;
+  frame.size = 3;
 
   interpret(vm, &frame);
+
+  EXPECT_INT_EQ(values[2].asInteger(vm), 3);
 }
 
 void testAll() {
