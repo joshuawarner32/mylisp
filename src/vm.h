@@ -82,7 +82,7 @@ public:
 
   Syms syms;
 
-  Value core_imports;
+  Value loaded_modules;
 
   EvalFrame* currentEvalFrame = 0;
 

@@ -69,6 +69,8 @@ VM::VM(size_t heap_block_size):
 {
   VM& vm = *this;
 
+  loaded_modules = nil;
+
   true_->as_bool = true;
   false_->as_bool = false;
 
@@ -88,7 +90,7 @@ VM::VM(size_t heap_block_size):
   objs.builtin_make_symbol = make_builtin(vm, "make-symbol", builtin_make_symbol);
 
 
-  core_imports = makeList(
+  Value core_imports = makeList(
     makeCons(syms.add, objs.builtin_add),
     makeCons(syms.sub, objs.builtin_sub),
     makeCons(syms.mul, objs.builtin_mul),
@@ -103,6 +105,11 @@ VM::VM(size_t heap_block_size):
     makeCons(syms.ctor, objs.builtin_constructor),
     makeCons(syms.make_symbol, objs.builtin_make_symbol),
     makeCons(syms.symbol_name, objs.builtin_symbol_name));
+
+  loaded_modules = makeCons(
+    makeCons(syms.core, core_imports),
+    loaded_modules);
+
   prettyPrinterImpl = nil;
   transformerImpl = nil;
   parserImpl = nil;
@@ -379,8 +386,7 @@ Value eval(VM& vm, Value o, Map env) {
         c = c.rest.asCons(vm);
         Value sym = c.first;
         EXPECT(c.rest.isNil());
-        EXPECT(lib == vm.syms.core);
-        return map_lookup(vm, vm.core_imports, sym);
+        return map_lookup(vm, map_lookup(vm, vm.loaded_modules, lib), sym);
       } else if(f == vm.syms.quote) {
         c = o.asCons(vm);
         Value a = c.first;
