@@ -124,7 +124,10 @@
                 (parse-bool s continue)
                 (if (eq? ch "\"")
                   (parse-string "" s continue)
-                  (error "<parse-error>:" str) ))))))))))
+                  (if (eq? ch "'")
+                    (parse-value s (lambda (val str)
+                      (continue (cons (quote quote) (cons val ())) str)))
+                    (error "<parse-error>:" str) )))))))))))
 
 (define (parse str multiexpr)
   (if multiexpr
