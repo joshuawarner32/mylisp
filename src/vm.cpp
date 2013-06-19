@@ -208,7 +208,7 @@ Value VM::parse(const char* text, bool multiexpr) {
   if(parserImpl.isNil()) {
     parserImpl = eval(*this, deserialize(*this, binary_parse_data), nil);
   }
-  Value input = makeString(text);
+  Value input = makeString(strdup(text));
   Value result = eval(*this, makeList(parserImpl, input, makeBool(multiexpr)), nil);
   suppressInternalRecursion = false;
   return result;
