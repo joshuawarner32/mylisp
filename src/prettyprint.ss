@@ -5,11 +5,12 @@
     sym-name first rest
     ctor))
 
-(define (int? v) (eq? (ctor v) (quote Integer)))
-(define (str? v) (eq? (ctor v) (quote String)))
-(define (nil? v) (eq? (ctor v) (quote Nil)))
-(define (cons? v) (eq? (ctor v) (quote cons)))
-(define (sym? v) (eq? (ctor v) (quote Symbol)))
+(define (int? v) (eq? (ctor v) 'Integer))
+(define (str? v) (eq? (ctor v) 'String))
+(define (nil? v) (eq? (ctor v) 'Nil))
+(define (cons? v) (eq? (ctor v) 'cons))
+(define (sym? v) (eq? (ctor v) 'Symbol))
+(define (bool? v) (eq? (ctor v) 'Bool))
 
 (define (list-tostring value indent list-on-newline value-stringer)
   (if (nil? value) ")"
@@ -31,7 +32,7 @@
     (nth (rest lst) (- n 1))))
 
 (define (str-digit n)
-  (nth (quote ("0" "1" "2" "3" "4" "5" "6" "7" "8" "9")) n))
+  (nth '("0" "1" "2" "3" "4" "5" "6" "7" "8" "9") n))
 
 (define (int-to-str-digits i)
   (if (eq? i 0) ""
@@ -54,7 +55,7 @@
       (let ((ch (first parts))
             (s  (first (rest parts))))
         (concat
-          (mapstr ch (quote ("\"" "\\\"" "\n" "\\n" "\\" "\\\\")))
+          (mapstr ch '("\"" "\\\"" "\n" "\\n" "\\" "\\\\"))
           (escape-str-inner s))))))
 
 (define (escape-str s)
@@ -77,7 +78,7 @@
           (int-to-str value)
           (if (str? value)
             (escape-str value)
-            (if (eq? (ctor value) (quote Bool))
+            (if (bool? value)
               (bool-to-str value)
               "<unknown>")))))))
 

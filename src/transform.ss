@@ -1,9 +1,9 @@
 (import core
   (eq? rest first cons + ctor))
 
-(define (nil? v) (eq? (ctor v) (quote Nil)))
-(define (cons? v) (eq? (ctor v) (quote cons)))
-(define (sym? v) (eq? (ctor v) (quote Symbol)))
+(define (nil? v) (eq? (ctor v) 'Nil))
+(define (cons? v) (eq? (ctor v) 'cons))
+(define (sym? v) (eq? (ctor v) 'Symbol))
 
 (define (internal-transform-defines program new-program)
   (if (nil? program) new-program
@@ -14,7 +14,7 @@
 
 (define (transform-define def new-program)
   (if (cons? def)
-    (if (eq? (first def) (quote define))
+    (if (eq? (first def) 'define)
       (cons (cons (rest def) (first new-program)) (rest new-program))
       (cons (first new-program) def))
     (cons (first new-program) def))
@@ -23,7 +23,7 @@
 (define (transform-defines program)
   (let ((res (internal-transform-defines program (cons () ()) )))
     (cons
-      (quote letlambdas)
+      'letlambdas
       (cons (first res)
         (cons (rest res) ())))
   )
@@ -36,7 +36,7 @@
       (cons imp imports)
       (map
         (lambda (x)
-          (cons (quote import)
+          (cons 'import
             (cons module
               (cons x ()))))
         names))))
@@ -46,12 +46,12 @@
 (define (transform-imports program imports)
   (if (nil? program) (write-imports program imports)
     (if (cons? (first program))
-      (if (eq? (first (first program)) (quote import))
+      (if (eq? (first (first program)) 'import)
         (transform-imports (rest program) (expand-imports (first program) imports))
         (write-imports (transform-defines program) imports))
       (write-imports (transform-defines program) imports))))
 
-(define (make-symbol) (quote some-random-symbol))
+(define (make-symbol) 'some-random-symbol)
 
 (define (import-names imps)
   (if (nil? imps) ()
@@ -63,7 +63,7 @@
 
 (define (write-imports body imports)
   (cons
-    (quote letlambdas)
+    'letlambdas
     (cons 
       (cons
         (cons (cons (make-symbol) (import-names imports))
@@ -123,23 +123,23 @@
       ())))
 
 (define (process-lambda form)
-  (cons (quote letlambdas)
-    (cons (make-lambdas (quote current-lambda) (rest form))
-      (cons (quote current-lambda)
+  (cons 'letlambdas
+    (cons (make-lambdas 'current-lambda (rest form))
+      (cons 'current-lambda
         ()))))
 
 (define (let-fn form)
-  (make-lambdas (quote current-let)
+  (make-lambdas 'current-let
     (cons (firsts (first form))
       (rest form))))
 
 (define (let-body form)
   (cons
-    (quote current-let)
+    'current-let
     (seconds (first form))))
 
 (define (process-let form)
-  (cons (quote letlambdas)
+  (cons 'letlambdas
     (cons (let-fn (rest form))
       (cons (let-body (rest form))
         ()))))
@@ -148,9 +148,9 @@
   (macroexpand
       (transform-imports program ())
     (cons
-      (cons (quote lambda) process-lambda)
+      (cons 'lambda process-lambda)
       (cons 
-        (cons (quote let) process-let)
+        (cons 'let process-let)
         ()))
   )
 )

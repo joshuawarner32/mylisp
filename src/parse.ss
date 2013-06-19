@@ -1,11 +1,9 @@
 (import core
   (+ * concat split first rest cons eq? ctor make-sym))
 
-(define (nil? v) (eq? (ctor v) (quote Nil)))
-(define (cons? v) (eq? (ctor v) (quote cons)))
-(define (sym? v) (eq? (ctor v) (quote Symbol)))
-
-(define (nil? v) (eq? (ctor v) (quote Nil)))
+(define (nil? v) (eq? (ctor v) 'Nil))
+(define (cons? v) (eq? (ctor v) 'cons))
+(define (sym? v) (eq? (ctor v) 'Symbol))
 
 (define (or a b) (if a #t b))
 (define (not a) (if a #f #t))
@@ -53,13 +51,13 @@
       (list-contains (rest lst) val))))
 
 (define (digit-value ch)
-  (list-index (quote ("0" "1" "2" "3" "4" "5" "6" "7" "8" "9")) ch))
+  (list-index '("0" "1" "2" "3" "4" "5" "6" "7" "8" "9") ch))
 
 (define (isletter ch)
   (list-contains
-    (quote ("a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z"
+    '("a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z"
       "A" "B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M" "N" "O" "P" "Q" "R" "S" "T" "U" "V" "W" "X" "Y" "Z"
-      "?" "+" "-" "*" "/"))
+      "?" "+" "-" "*" "/")
     ch))
 
 (define (parse-integer str value continue)
@@ -126,7 +124,7 @@
                   (parse-string "" s continue)
                   (if (eq? ch "'")
                     (parse-value s (lambda (val str)
-                      (continue (cons (quote quote) (cons val ())) str)))
+                      (continue (cons 'quote (cons val ())) str)))
                     (error "<parse-error>:" str) )))))))))))
 
 (define (parse str multiexpr)
