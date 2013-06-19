@@ -5,6 +5,9 @@
 (define (cons? v) (eq? (ctor v) 'cons))
 (define (sym? v) (eq? (ctor v) 'Symbol))
 
+(define (and a b) (if a b #f))
+(define (not a) (if a #f #t))
+
 (define (internal-transform-defines program new-program)
   (if (nil? program) new-program
     (internal-transform-defines
@@ -107,7 +110,7 @@
     (if (cons? program)
       (let ((f (first program))
             (r (rest program)))
-        (if (sym? f)
+        (if (and (sym? f) (not (eq? f 'quote)))
           (let ((m (find-macro f macros)))
             (if (nil? m)
               (cons f (map (expander macros) r))
@@ -144,6 +147,103 @@
       (cons (let-body (rest form))
         ()))))
 
+(define (collect-imports form)
+  (if (nil? form) ()
+    (if (not (cons? form)) ()
+      (if (eq? (first (first form)) (quote import))
+        (cons (rest (first form)) (collect-imports (rest form)))
+        (collect-imports (rest form))))))
+
+(define (collect-defines form)
+  (if (nil? form) ()
+    (if (not (cons? form)) ()
+      (if (eq? (first (first form)) (quote define))
+        (cons (rest (first form)) (collect-defines (rest form)))
+        (collect-defines (rest form))))))
+
+(define (collect-exports form)
+  (if (nil? form) ()
+    (if (not (cons? form)) ()
+      (if (eq? (first (first form)) (quote export))
+        (cons (rest (first form)) (collect-exports (rest form)))
+        (collect-exports (rest form))))))
+
+(define (make-module-lambda inner)
+  (cons 'lambda
+    (cons (cons 'env ())
+      (cons inner ()))))
+
+(define (make-import name)
+  (cons 'env (cons name ())))
+
+(define (module-map imports)
+  (map (lambda (imp)
+      (let ((name (first (first imports))))
+        (cons name
+          (cons (make-import name)
+            () ))))
+    imports))
+
+(define (make-modules-let imports inner)
+  (cons 'let
+    (cons
+      (module-map imports)
+      (cons inner
+        ()))))
+
+(define (imports-map imports)
+  (let ((name (first imports))
+        (lst (first (rest imports))))
+    (map (lambda (val)
+        (cons val
+          (cons
+            (cons name (cons val ()))
+            ())))
+      lst)))
+
+(define (make-imports-let imports inner)
+  (if (eq? imports ()) inner
+    (cons 'let
+      (cons
+        (imports-map (first imports))
+        (cons (make-imports-let (rest imports) inner) ())))))
+
+(define (make-defines-letlambda defines inner)
+  (cons 'letlambdas
+    (cons (map rest defines)
+      (cons inner ()))))
+
+(define (make-export-condition name)
+  (cons 'eq?
+    (cons 'sym-name (cons (cons 'quote (cons name ())) ()))))
+
+(define (make-exports-cases exports)
+  (if (nil? exports) (cons 'error ())
+    (cons 'if
+      (cons (make-export-condition (first exports))
+        (cons (first exports)
+          (cons (make-exports-cases (rest exports))
+            ()))))))
+
+(define (make-exports-lambda exports)
+  (cons 'lambda
+    (cons (cons 'sym-name ())
+      (cons (make-exports-cases exports)
+        ()))))
+
+(define (process-module form)
+  (let ((imports (collect-imports (rest form)))
+        (defines (collect-defines (rest form)))
+        (exports (collect-exports (rest form))))
+    (cons 'quote
+      (cons
+        (make-module-lambda
+          (make-modules-let imports
+            (make-imports-let imports
+              (make-defines-letlambda defines
+                (make-exports-lambda (first exports))))))
+        ()))))
+
 (define (transform program)
   (macroexpand
       (transform-imports program ())
@@ -151,7 +251,9 @@
       (cons 'lambda process-lambda)
       (cons 
         (cons 'let process-let)
-        ()))
+        (cons
+          (cons 'module process-module)
+          ())))
   )
 )
 
