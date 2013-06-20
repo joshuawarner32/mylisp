@@ -64,6 +64,10 @@
 (define (bool-to-str s)
   (if s "#t" "#f"))
 
+(define (unknown-to-str v)
+  (let ((s (sym-name (ctor v))))
+    (concat "<" s ">")))
+
 (define (value-tostring value indent list-on-newline)
   (if (nil? value) "()"
     (if (cons? value)
@@ -80,7 +84,7 @@
             (escape-str value)
             (if (bool? value)
               (bool-to-str value)
-              "<unknown>")))))))
+              (unknown-to-str value))))))))
 
 (define (tostring value)
   (value-tostring value 0 #f))
