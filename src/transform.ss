@@ -174,7 +174,7 @@
       (cons inner ()))))
 
 (define (make-import name)
-  (cons 'env (cons name ())))
+  (cons 'env (cons (cons 'quote (cons name ())) ())))
 
 (define (module-map imports)
   (map (lambda (imp)
@@ -197,7 +197,7 @@
     (map (lambda (val)
         (cons val
           (cons
-            (cons name (cons val ()))
+            (cons name (cons (cons 'quote (cons val ())) ()))
             ())))
       lst)))
 
@@ -210,7 +210,7 @@
 
 (define (make-defines-letlambda defines inner)
   (cons 'letlambdas
-    (cons (map rest defines)
+    (cons defines
       (cons inner ()))))
 
 (define (make-export-condition name)
@@ -235,14 +235,11 @@
   (let ((imports (collect-imports (rest form)))
         (defines (collect-defines (rest form)))
         (exports (collect-exports (rest form))))
-    (cons 'quote
-      (cons
         (make-module-lambda
           (make-modules-let imports
             (make-imports-let imports
               (make-defines-letlambda defines
-                (make-exports-lambda (first exports))))))
-        ()))))
+                (make-exports-lambda (first exports))))))))
 
 (define (transform program)
   (macroexpand

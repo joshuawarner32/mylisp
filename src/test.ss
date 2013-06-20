@@ -1,4 +1,7 @@
-(module
+(import core
+  (+ cons first rest concat ctor eq?))
+
+(let ((m (module
   (import core
     (+ cons first rest concat ctor))
 
@@ -33,7 +36,20 @@
 
   (concat "Hello " "world")
 
-  '(1 2 3 4)
-
   (export addn)
+ )))
+  
+  ((((m (lambda (m)
+    (if (eq? m 'core)
+      (lambda (sym)
+        (if (eq? sym '+) +
+          (if (eq? sym 'cons) cons
+            (if (eq? sym 'first) first
+              (if (eq? sym 'rest) rest
+                (if (eq? sym 'concat) concat
+                  (if (eq? sym 'ctor) ctor
+                    (error sym))))))))
+      (error))))
+    'addn)
+    1) 2)
 )

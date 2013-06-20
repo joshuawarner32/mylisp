@@ -115,6 +115,7 @@ bool Value::operator == (const Value& other) const {
     // fallthrough
   case Object::Type::Symbol:
   case Object::Type::Builtin:
+  case Object::Type::Lambda:
     return obj == other.obj;
   default:
     EXPECT(0);
