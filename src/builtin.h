@@ -16,3 +16,5 @@ Value builtin_concat(VM& vm, Value args);
 Value builtin_split(VM& vm, Value args);
 Value builtin_symbol_name(VM& vm, Value args);
 Value builtin_make_symbol(VM& vm, Value args);
+Value builtin_load_module(VM& vm, Value args);
+Value builtin_load_from_core(VM& vm, Value args);

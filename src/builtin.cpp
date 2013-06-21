@@ -153,3 +153,15 @@ Value builtin_make_symbol(VM& vm, Value args) {
   String str = singleValue(vm, args).asString(vm);
   return vm.makeSymbol(str);
 }
+
+Value builtin_load_module(VM& vm, Value args) {
+  Value moduleName = singleValue(vm, args);
+  VM_EXPECT(vm, moduleName.isSymbol());
+  return map_lookup(vm, vm.loaded_modules, moduleName);
+}
+
+Value builtin_load_from_core(VM& vm, Value args) {
+  Value symName = singleValue(vm, args);
+  VM_EXPECT(vm, symName.isSymbol());
+  return map_lookup(vm, vm.core_imports, symName);
+}

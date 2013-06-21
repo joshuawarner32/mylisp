@@ -78,11 +78,14 @@ public:
     Value builtin_symbol_name;
     Value builtin_make_symbol;
     Value builtin_constructor;
+    Value builtin_load_module;
+    Value builtin_load_from_core;
   } objs;
 
   Syms syms;
 
   Value loaded_modules;
+  Value core_imports;
 
   EvalFrame* currentEvalFrame = 0;
 

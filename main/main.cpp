@@ -129,7 +129,11 @@ int main(int argc, char** argv) {
       return 0;
     } else if(file) {
       Value transformed = run_transform_file(vm, file);
-      Value result = eval(vm, transformed, vm.nil);
+      // vm.print(transformed);
+      Value moduleCall = vm.makeList(transformed, vm.objs.builtin_load_module);
+      Value module = eval(vm, moduleCall, vm.nil);
+      Value mainCall = vm.makeList(vm.makeList(module, vm.makeList(vm.syms.quote, vm.syms.main)));
+      Value result = eval(vm, mainCall, vm.nil);
 
       vm.print(result);
       return 0;

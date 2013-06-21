@@ -88,9 +88,11 @@ VM::VM(size_t heap_block_size):
   objs.builtin_constructor = make_builtin(vm, "constructor", builtin_constructor);
   objs.builtin_symbol_name = make_builtin(vm, "symbol-name", builtin_symbol_name);
   objs.builtin_make_symbol = make_builtin(vm, "make-symbol", builtin_make_symbol);
+  objs.builtin_load_module = make_builtin(vm, "load-module", builtin_load_module);
+  objs.builtin_load_from_core = make_builtin(vm, "load-from-core", builtin_load_from_core);
 
 
-  Value core_imports = makeList(
+  vm.core_imports = makeList(
     makeCons(syms.add, objs.builtin_add),
     makeCons(syms.sub, objs.builtin_sub),
     makeCons(syms.mul, objs.builtin_mul),
@@ -107,7 +109,7 @@ VM::VM(size_t heap_block_size):
     makeCons(syms.symbol_name, objs.builtin_symbol_name));
 
   loaded_modules = makeCons(
-    makeCons(syms.core, core_imports),
+    makeCons(syms.core, objs.builtin_load_from_core),
     loaded_modules);
 
   prettyPrinterImpl = nil;
@@ -382,11 +384,11 @@ Value eval(VM& vm, Value o, Map env) {
         env = make_lambdas_env(vm, lambdas, env);
       } else if(f == vm.syms.import) {
         c = o.asCons(vm);
-        Value lib = c.first;
+        // Value lib = c.first;
         c = c.rest.asCons(vm);
         Value sym = c.first;
         EXPECT(c.rest.isNil());
-        return map_lookup(vm, map_lookup(vm, vm.loaded_modules, lib), sym);
+        return map_lookup(vm, vm.core_imports, sym);
       } else if(f == vm.syms.quote) {
         c = o.asCons(vm);
         Value a = c.first;
