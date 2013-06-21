@@ -45,6 +45,7 @@ Value builtin_mul(VM& vm, Value args) {
 Value builtin_div(VM& vm, Value args) {
   Cons c = args.asCons(vm);
   int res = c.first.asInteger(vm);
+  args = c.rest;
   while(!args.isNil()) {
     c = args.asCons(vm);
     res /= c.first.asInteger(vm);
