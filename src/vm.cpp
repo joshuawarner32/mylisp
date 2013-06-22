@@ -211,7 +211,10 @@ Value VM::transform(Value input) {
 Value VM::parse(const char* text, bool multiexpr) {
   suppressInternalRecursion = true;
   if(parserImpl.isNil()) {
-    parserImpl = eval(*this, deserialize(*this, binary_parse_data), nil);
+    Value source = deserialize(*this, binary_parse_data);
+    // print(source);
+    Value module = loadModule(makeSymbol("lang/parse"), source);
+    parserImpl = eval(*this, makeList(module, makeList(syms.quote, makeSymbol("parse"))), nil);
   }
   Value input = makeString(strdup(text));
   Value result = eval(*this, makeList(parserImpl, input, makeBool(multiexpr)), nil);
