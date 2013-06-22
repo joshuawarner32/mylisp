@@ -70,7 +70,7 @@
             continue)))))))
 
 (define (lookup key map)
-  (if (nil? map) (error)
+  (if (nil? map) (error "lookup failed")
     (if (eq? key (first map)) (first (rest map))
       (lookup key (first (rest (rest map)))))))
 

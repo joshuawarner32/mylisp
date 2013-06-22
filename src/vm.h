@@ -118,6 +118,8 @@ public:
   Value transform(Value value);
   Value parse(const char* text, bool multiexpr = false);
 
+  Value loadModule(Value name, Value source);
+
   void errorOccurred(const char* file, int line, const char* message);
 };
 

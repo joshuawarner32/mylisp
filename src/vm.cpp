@@ -197,7 +197,10 @@ void VM::print(Value value, int indent, StandardStream stream) {
 Value VM::transform(Value input) {
   suppressInternalRecursion = true;
   if(transformerImpl.isNil()) {
-    transformerImpl = eval(*this, deserialize(*this, binary_transform_data), nil);
+    Value source = deserialize(*this, binary_transform_data);
+    // print(source);
+    Value module = loadModule(makeSymbol("lang/transform"), source);
+    transformerImpl = eval(*this, makeList(module, makeList(syms.quote, makeSymbol("transform"))), nil);
   }
   Value quoted_input = makeList(syms.quote, input);
   Value transformed = eval(*this, makeList(transformerImpl, quoted_input), nil);
@@ -214,6 +217,13 @@ Value VM::parse(const char* text, bool multiexpr) {
   Value result = eval(*this, makeList(parserImpl, input, makeBool(multiexpr)), nil);
   suppressInternalRecursion = false;
   return result;
+}
+
+Value VM::loadModule(Value name, Value source) {
+  Value moduleFn = eval(*this, source, nil);
+  Value module = eval(*this, makeList(moduleFn, objs.builtin_load_module), nil);
+  loaded_modules = makeCons(makeCons(name, module), loaded_modules);
+  return module;
 }
 
 void VM::errorOccurred(const char* file, int line, const char* message) {
