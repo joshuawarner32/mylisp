@@ -179,7 +179,7 @@
 
   (define (module-map imports)
     (map (lambda (imp)
-        (let ((name (first (first imports))))
+        (let ((name (first imp)))
           (cons name
             (cons (make-import name)
               () ))))
@@ -242,18 +242,19 @@
                 (make-defines-letlambda defines
                   (make-exports-lambda (first exports))))))))
 
-  (define (transform program)
-    (macroexpand
-        (transform-imports program ())
+  (define (default-macroexpand program)
+    (macroexpand program
       (cons
         (cons 'lambda process-lambda)
         (cons 
           (cons 'let process-let)
           (cons
             (cons 'module process-module)
-            ())))
-    )
-  )
+            ())))))
 
-  (export transform)
+  (define (transform program)
+    (default-macroexpand
+        (transform-imports program ())))
+
+  (export transform default-macroexpand)
 )
