@@ -25,12 +25,18 @@
       (make-failure value expected)))
 
   (define (test-lambda-macro)
-    (check-eq (default-macroexpand '(lambda (x) x))
-        '(letlambdas (((current-lambda x) x)) current-lambda)))
+    (cases
+      (check-eq (default-macroexpand '(lambda (x) x))
+        '(letlambdas (((current-lambda x) x)) current-lambda))
+      (check-eq (default-macroexpand '(lambda (x y) (+ x y)))
+        '(letlambdas (((current-lambda x y) (+ x y))) current-lambda))))
 
   (define (test-let-macro)
-    (check-eq (default-macroexpand '(let ((x 1)) x))
-        '(letlambdas (((current-let x) x)) (current-let 1))))
+    (cases
+      (check-eq (default-macroexpand '(let ((x 1)) x))
+        '(letlambdas (((current-let x) x)) (current-let 1)))
+      (check-eq (default-macroexpand '(let ((x 1) (y 2)) (+ x y)))
+        '(letlambdas (((current-let x y) (+ x y))) (current-let 1 2)))))
 
   (define (main)
     (cases
