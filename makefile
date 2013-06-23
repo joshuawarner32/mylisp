@@ -25,7 +25,7 @@ embed-objects = build/transform-data.o build/prettyprint-data.o build/parse-data
 
 run: $(executable) test
 	echo "running"
-	${<} src/test.ss
+	if ${<} test/test.ss | tee /dev/stderr | grep -q failure; then exit 1; else exit 0; fi
 
 boot: build/boot-1/parse.ss.bin build/boot-1/transform.ss.bin build/boot-1/prettyprint.ss.bin
 	cp ${^} boot

@@ -4,6 +4,8 @@
 
   (import lang/transform (transform default-macroexpand))
 
+  (import lang/parse (parse))
+
   (define (list a b)
     (cons a (cons b ())))
 
@@ -38,10 +40,20 @@
       (check-eq (default-macroexpand '(let ((x 1) (y 2)) (+ x y)))
         '(letlambdas (((current-let x y) (+ x y))) (current-let 1 2)))))
 
-  (define (main)
+  (define (test-transform)
     (cases
       (test-lambda-macro)
       (test-let-macro)))
+
+  (define (test-parse)
+    (cases
+      (check-eq (parse "0" #f) 0)
+      (check-eq (parse "42" #f) 42)))
+
+  (define (main)
+    (cases
+      (test-transform)
+      (test-parse)))
 
   (export main)
 )
