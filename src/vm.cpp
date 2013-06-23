@@ -183,7 +183,9 @@ FILE* streamToFile(StandardStream stream) {
 void VM::print(Value value, int indent, StandardStream stream) {
   suppressInternalRecursion = true;
   if(prettyPrinterImpl.isNil()) {
-    prettyPrinterImpl = eval(*this, deserialize(*this, binary_prettyprint_data), nil);
+    Value source = deserialize(*this, binary_prettyprint_data);
+    Value module = loadModule(makeSymbol("lang/prettyprint"), source);
+    prettyPrinterImpl = eval(*this, makeList(module, makeList(syms.quote, makeSymbol("tostring-indented"))), nil);
   }
   FILE* s = streamToFile(stream);
   Value quoted_input = makeList(syms.quote, value);
@@ -198,7 +200,6 @@ Value VM::transform(Value input) {
   suppressInternalRecursion = true;
   if(transformerImpl.isNil()) {
     Value source = deserialize(*this, binary_transform_data);
-    // print(source);
     Value module = loadModule(makeSymbol("lang/transform"), source);
     transformerImpl = eval(*this, makeList(module, makeList(syms.quote, makeSymbol("transform"))), nil);
   }
@@ -212,7 +213,6 @@ Value VM::parse(const char* text, bool multiexpr) {
   suppressInternalRecursion = true;
   if(parserImpl.isNil()) {
     Value source = deserialize(*this, binary_parse_data);
-    // print(source);
     Value module = loadModule(makeSymbol("lang/parse"), source);
     parserImpl = eval(*this, makeList(module, makeList(syms.quote, makeSymbol("parse"))), nil);
   }
