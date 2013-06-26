@@ -148,6 +148,19 @@ Value make_lambda(VM& vm, Value params, Value body, Value env);
 
 typedef Value Map;
 
-Value map_lookup(VM& vm, Map map, Value key);
+template<class Func>
+Value map_lookup_or_else(VM& vm, Map map, Value key, Func func) {
+  Value p = map;
+  while(!p.isNil()) {
+    Cons c = p.asCons(vm);
+    Value item = c.first;
+    if(item.asConsUnsafe().first == key) {
+      return item.asConsUnsafe().rest;
+    } else {
+      p = c.rest;
+    }
+  }
+  return func(key);
+}
 
 #endif

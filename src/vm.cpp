@@ -183,8 +183,7 @@ FILE* streamToFile(StandardStream stream) {
 void VM::print(Value value, int indent, StandardStream stream) {
   suppressInternalRecursion = true;
   if(prettyPrinterImpl.isNil()) {
-    Value source = deserialize(*this, binary_prettyprint_data);
-    Value module = loadModule(makeSymbol("lang/prettyprint"), source);
+    Value module = loadModule(makeSymbol("lang/prettyprint"));
     prettyPrinterImpl = eval(*this, makeList(module, makeList(syms.quote, makeSymbol("tostring-indented"))), nil);
   }
   FILE* s = streamToFile(stream);
@@ -220,6 +219,22 @@ Value VM::parse(const char* text, bool multiexpr) {
   Value result = eval(*this, makeList(parserImpl, input, makeBool(multiexpr)), nil);
   suppressInternalRecursion = false;
   return result;
+}
+
+Value VM::loadModule(Value name) {
+  EvalFrame frame(*this, name, nil);
+  if(name.isSymbol()) {
+    if(name.asSymbolUnsafe() == String("lang/prettyprint")) {
+      Value source = deserialize(*this, binary_prettyprint_data);
+      return loadModule(name, source);
+    }
+  }
+  printf("unrecognized:");
+  fwrite(name.asSymbolUnsafe().text, name.asSymbolUnsafe().length, 1, stdout);
+  printf("\n");
+  exit(1);
+  VM_EXPECT(*this, 0);
+  return 0;
 }
 
 Value VM::loadModule(Value name, Value source) {

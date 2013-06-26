@@ -6,6 +6,11 @@
 String::String(const char* value): String(value, strlen(value)) {}
 
 bool String::operator == (const String& other) const {
+  // printf("compare [");
+  // fwrite(text, length, 1, stdout);
+  // printf("] [");
+  // fwrite(other.text, other.length, 1, stdout);
+  // printf("]\n");
   return length == other.length &&
     memcmp(text, other.text, length) == 0;
 }
@@ -124,15 +129,9 @@ bool Value::operator == (const Value& other) const {
 }
 
 Value map_lookup(VM& vm, Map map, Value key) {
-  Value p = map;
-  while(!p.isNil()) {
-    Value item = cons_first(vm, p);
-    if(cons_first(vm, item) == key) {
-      return cons_rest(vm, item);
-    } else {
-      p = cons_rest(vm, p);
-    }
-  }
-  VM_ERROR(vm, "lookup failed");
-  return 0;
+  return map_lookup_or_else(vm, map, key, [&vm](Value key)->Value {
+    VM_ERROR(vm, "lookup failed");
+    return 0;
+  });
 }
+

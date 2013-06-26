@@ -23,7 +23,7 @@ void _assert_failed(const char* file, int line, const char* message, ...);
 #endif
 
 #define VM_ERROR(vm, message) \
-  vm.errorOccurred(__FILE__, __LINE__, message)
+  (vm).errorOccurred(__FILE__, __LINE__, message)
 
 #define VM_EXPECT(vm, expected) \
   do { \
@@ -118,6 +118,9 @@ public:
   Value transform(Value value);
   Value parse(const char* text, bool multiexpr = false);
 
+  void initBuiltinModules();
+
+  Value loadModule(Value name);
   Value loadModule(Value name, Value source);
 
   void errorOccurred(const char* file, int line, const char* message);

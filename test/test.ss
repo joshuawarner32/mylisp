@@ -6,6 +6,8 @@
 
   (import lang/parse (parse))
 
+  (import lang/prettyprint (tostring))
+
   (define (list a b)
     (cons a (cons b ())))
 
@@ -50,10 +52,17 @@
       (check-eq (parse "0" #f) 0)
       (check-eq (parse "42" #f) 42)))
 
+  (define (test-prettyprint)
+    (cases
+      (check-eq (tostring 0) "0")
+      (check-eq (tostring 42) "42")))
+
   (define (main)
     (cases
       (test-transform)
-      (test-parse)))
+      (cases
+        (test-parse)
+        (test-prettyprint))))
 
   (export main)
 )

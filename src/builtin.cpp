@@ -158,7 +158,9 @@ Value builtin_make_symbol(VM& vm, Value args) {
 Value builtin_load_module(VM& vm, Value args) {
   Value moduleName = singleValue(vm, args);
   VM_EXPECT(vm, moduleName.isSymbol());
-  return map_lookup(vm, vm.loaded_modules, moduleName);
+  return map_lookup_or_else(vm, vm.loaded_modules, moduleName, [&vm](Value name) {
+    return vm.loadModule(name);
+  });
 }
 
 Value builtin_load_from_core(VM& vm, Value args) {
