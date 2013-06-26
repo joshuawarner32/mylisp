@@ -55,15 +55,13 @@
 
   (define (make-lambdas name form)
     (let ((fn-args (cons name (first form))))
-      (cons
-        (cons fn-args (rest form))
-        ())))
+      (list
+        (cons fn-args (rest form)))))
 
   (define (process-lambda form)
-    (cons 'letlambdas
-      (cons (make-lambdas 'current-lambda (rest form))
-        (cons 'current-lambda
-          ()))))
+    (list 'letlambdas
+      (make-lambdas 'current-lambda (rest form))
+      'current-lambda))
 
   (define (let-fn form)
     (make-lambdas 'current-let
@@ -76,10 +74,9 @@
       (seconds (first form))))
 
   (define (process-let form)
-    (cons 'letlambdas
-      (cons (let-fn (rest form))
-        (cons (let-body (rest form))
-          ()))))
+    (list 'letlambdas
+      (let-fn (rest form))
+      (let-body (rest form))))
 
   (define (collect-imports form)
     (if (nil? form) ()
@@ -103,12 +100,13 @@
           (collect-exports (rest form))))))
 
   (define (make-module-lambda inner)
-    (cons 'lambda
-      (cons (cons 'env ())
-        (cons inner ()))))
+    (list 'lambda
+      (cons 'env ())
+      inner))
 
   (define (make-import name)
-    (cons 'env (cons (cons 'quote (cons name ())) ())))
+    (list 'env
+      (list 'quote name)))
 
   (define (module-map imports)
     (map (lambda (imp)
@@ -119,51 +117,42 @@
       imports))
 
   (define (make-modules-let imports inner)
-    (cons 'let
-      (cons
-        (module-map imports)
-        (cons inner
-          ()))))
+    (list 'let
+      (module-map imports)
+      inner))
 
   (define (imports-map imports)
     (let ((name (first imports))
           (lst (first (rest imports))))
       (map (lambda (val)
-          (cons val
-            (cons
-              (cons name (cons (cons 'quote (cons val ())) ()))
-              ())))
+          (list val
+            (list name
+              (list 'quote val))))
         lst)))
 
   (define (make-imports-let imports inner)
     (if (eq? imports ()) inner
-      (cons 'let
-        (cons
-          (imports-map (first imports))
-          (cons (make-imports-let (rest imports) inner) ())))))
+      (list 'let
+        (imports-map (first imports))
+        (make-imports-let (rest imports) inner))))
 
   (define (make-defines-letlambda defines inner)
-    (cons 'letlambdas
-      (cons defines
-        (cons inner ()))))
+    (list 'letlambdas defines inner))
 
   (define (make-export-condition name)
-    (cons 'eq?
-      (cons 'sym-name (cons (cons 'quote (cons name ())) ()))))
+    (list 'eq? 'sym-name (list 'quote name)))
 
   (define (make-exports-cases exports)
-    (if (nil? exports) (cons 'error (cons 'sym-name ()))
-      (cons 'if
-        (cons (make-export-condition (first exports))
-          (cons (first exports)
-            (cons (make-exports-cases (rest exports))
-              ()))))))
+    (if (nil? exports) (list 'error 'sym-name)
+      (list 'if
+        (make-export-condition (first exports))
+        (first exports)
+        (make-exports-cases (rest exports)))))
 
   (define (make-exports-lambda exports)
-    (cons 'lambda
-      (cons (cons 'sym-name ())
-        (cons (make-exports-cases exports)
-          ()))))
+    (list 'lambda
+      (list 'sym-name)
+      (make-exports-cases exports)))
 
   (define (process-module form)
     (let ((imports (collect-imports (rest form)))
@@ -177,13 +166,10 @@
 
   (define (default-macroexpand program)
     (macroexpand program
-      (cons
+      (list
         (cons 'lambda process-lambda)
-        (cons 
-          (cons 'let process-let)
-          (cons
-            (cons 'module process-module)
-            ())))))
+        (cons 'let process-let)
+        (cons 'module process-module))))
 
   (define (transform program)
     (default-macroexpand program))
