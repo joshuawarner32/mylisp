@@ -320,15 +320,21 @@ static bool is_self_evaluating(Value o) {
 
 static Value extend_env(VM& vm, Value params, Value args, Value env) {
   if(!params.isNil()) {
-    Cons cp = params.asCons(vm);
-    Cons ca = args.asCons(vm);
-    Value key = cp.first;
-    EXPECT(key.isSymbol());
-    Value value = ca.first;
-    return extend_env(vm,
-      cp.rest,
-      ca.rest,
-      vm.makeCons(vm.makeCons(key, value), env));
+    if(params.isSymbol()) {
+      return vm.makeCons(
+        vm.makeCons(params, args),
+        env);
+    } else {
+      Cons cp = params.asCons(vm);
+      Cons ca = args.asCons(vm);
+      Value key = cp.first;
+      EXPECT(key.isSymbol());
+      Value value = ca.first;
+      return extend_env(vm,
+        cp.rest,
+        ca.rest,
+        vm.makeCons(vm.makeCons(key, value), env));
+    }
   } else {
     VM_EXPECT(vm, args.isNil());
     return env;

@@ -1,6 +1,6 @@
 (module
   (import core
-    (eq? cons))
+    (eq? cons ctor))
 
   (import lang/transform (transform default-macroexpand))
 
@@ -8,21 +8,20 @@
 
   (import lang/prettyprint (tostring))
 
-  (define (list a b)
-    (cons a (cons b ())))
+  (define (nil? a) (eq? (ctor a) 'Nil))
+
+  (define (list . items) items)
 
   (define (make-failure value expected)
-    (cons 'failure
-      (cons (list 'got value)
-        (cons (list 'expected expected)
-          ()))))
+    (list 'failure
+      (list 'got value)
+      (list 'expected expected)))
 
-  (define (cases a b)
-    (if (eq? a 'good)
-      (if (eq? b 'good)
-        'good
-        b)
-      a))
+  (define (cases first . rest)
+    (if (eq? first 'good)
+      (if (nil? rest) 'good
+        (cases . rest))
+      first))
 
   (define (check-eq value expected)
     (if (eq? value expected) 'good
@@ -47,10 +46,27 @@
       (test-lambda-macro)
       (test-let-macro)))
 
-  (define (test-parse)
+  (define (test-parse-ints)
     (cases
       (check-eq (parse "0" #f) 0)
       (check-eq (parse "42" #f) 42)))
+
+  (define (test-parse-syms)
+    (cases
+      (check-eq (parse "a" #f) 'a)
+      (check-eq (parse "abc" #f) 'abc)
+      (check-eq (parse "ab/c" #f) 'ab/c)))
+
+  (define (test-parse-dot)
+    (cases
+      (check-eq (parse "(a . b)" #f) (cons 'a 'b))
+      (check-eq (parse "(1 2 . 3)" #f) (cons 1 (cons 2 3)))))
+
+  (define (test-parse)
+    (cases
+      (test-parse-ints)
+      (test-parse-syms)
+      (test-parse-dot)))
 
   (define (test-prettyprint)
     (cases
@@ -60,9 +76,8 @@
   (define (main)
     (cases
       (test-transform)
-      (cases
-        (test-parse)
-        (test-prettyprint))))
+      (test-parse)
+      (test-prettyprint)))
 
   (export main)
 )

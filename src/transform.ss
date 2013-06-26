@@ -98,9 +98,11 @@
 
   (define (map func list)
     (if (nil? list) ()
-      (cons
-        (func (first list))
-        (map func (rest list)))))
+      (if (cons? list)
+        (cons
+          (func (first list))
+          (map func (rest list)))
+        (func list))))
 
   (define (expander macros)
     (lambda (program)
