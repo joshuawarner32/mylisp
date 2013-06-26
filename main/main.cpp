@@ -44,13 +44,8 @@ Value parse_file(VM& vm, const char* file, bool multiexpr) {
   return obj;
 }
 
-Value run_file(VM& vm, const char* file, bool multiexpr) {
-  Value obj = parse_file(vm, file, multiexpr);
-  return eval(vm, obj, vm.nil);
-}
-
 Value run_transform_file(VM& vm, const char* file) {
-  Value obj = vm.transform(parse_file(vm, file, true));
+  Value obj = vm.transform(parse_file(vm, file, false));
   // vm.print(obj, printf("transformed:"));
   return obj;
 }

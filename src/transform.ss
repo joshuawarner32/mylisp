@@ -9,76 +9,7 @@
   (define (and a b) (if a b #f))
   (define (not a) (if a #f #t))
 
-  (define (internal-transform-defines program new-program)
-    (if (nil? program) new-program
-      (internal-transform-defines
-        (rest program)
-        (transform-define (first program) new-program)))
-  )
-
-  (define (transform-define def new-program)
-    (if (cons? def)
-      (if (eq? (first def) 'define)
-        (cons (cons (rest def) (first new-program)) (rest new-program))
-        (cons (first new-program) def))
-      (cons (first new-program) def))
-  )
-
-  (define (transform-defines program)
-    (let ((res (internal-transform-defines program (cons () ()) )))
-      (cons
-        'letlambdas
-        (cons (first res)
-          (cons (rest res) ())))
-    )
-  )
-
-  (define (expand-imports imp imports)
-    (let ((module (first (rest imp)))
-          (names (first (rest (rest imp)))))
-      (if (sym? names)
-        (cons imp imports)
-        (map
-          (lambda (x)
-            (cons 'import
-              (cons module
-                (cons x ()))))
-          names))))
-
-
-
-  (define (transform-imports program imports)
-    (if (nil? program) (write-imports program imports)
-      (if (cons? (first program))
-        (if (eq? (first (first program)) 'import)
-          (transform-imports (rest program) (expand-imports (first program) imports))
-          (write-imports (transform-defines program) imports))
-        (write-imports (transform-defines program) imports))))
-
-  (define (make-symbol) 'some-random-symbol)
-
-  (define (import-names imps)
-    (if (nil? imps) ()
-      (cons
-        (first (rest (rest (first imps) )))
-        (import-names (rest imps)))
-    )
-  )
-
-  (define (write-imports body imports)
-    (cons
-      'letlambdas
-      (cons 
-        (cons
-          (cons (cons (make-symbol) (import-names imports))
-            (cons body ()))
-          ())
-        (cons
-          (cons (make-symbol) imports)
-          ())
-      )
-    )
-  )
+  (define (list . items) items)
 
   (define (firsts val)
     (if (nil? val) ()
@@ -255,8 +186,7 @@
             ())))))
 
   (define (transform program)
-    (default-macroexpand
-        (transform-imports program ())))
+    (default-macroexpand program))
 
   (export transform default-macroexpand)
 )
