@@ -58,20 +58,7 @@ public:
   Value symList;
   struct {
     Value builtin_add;
-    Value builtin_sub;
-    Value builtin_mul;
-    Value builtin_div;
-    Value builtin_modulo;
-    Value builtin_is_cons;
     Value builtin_cons;
-    Value builtin_first;
-    Value builtin_rest;
-    Value builtin_is_equal;
-    Value builtin_concat;
-    Value builtin_split;
-    Value builtin_symbol_name;
-    Value builtin_make_symbol;
-    Value builtin_constructor;
     Value builtin_load_module;
     Value builtin_load_from_core;
   } objs;

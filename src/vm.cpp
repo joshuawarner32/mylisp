@@ -73,38 +73,26 @@ VM::VM(size_t heap_block_size):
   false_->as_bool = false;
 
   objs.builtin_add = make_builtin(vm, "add", builtin_add);
-  objs.builtin_sub = make_builtin(vm, "sub", builtin_sub);
-  objs.builtin_mul = make_builtin(vm, "mul", builtin_mul);
-  objs.builtin_div = make_builtin(vm, "div", builtin_div);
-  objs.builtin_modulo = make_builtin(vm, "modulo", builtin_modulo);
   objs.builtin_cons = make_builtin(vm, "cons", builtin_cons);
-  objs.builtin_first = make_builtin(vm, "first", builtin_first);
-  objs.builtin_rest = make_builtin(vm, "rest", builtin_rest);
-  objs.builtin_is_equal = make_builtin(vm, "is_equal", builtin_is_equal);
-  objs.builtin_concat = make_builtin(vm, "concat", builtin_concat);
-  objs.builtin_split = make_builtin(vm, "split", builtin_split);
-  objs.builtin_constructor = make_builtin(vm, "constructor", builtin_constructor);
-  objs.builtin_symbol_name = make_builtin(vm, "symbol-name", builtin_symbol_name);
-  objs.builtin_make_symbol = make_builtin(vm, "make-symbol", builtin_make_symbol);
   objs.builtin_load_module = make_builtin(vm, "load-module", builtin_load_module);
   objs.builtin_load_from_core = make_builtin(vm, "load-from-core", builtin_load_from_core);
 
 
   vm.core_imports = makeList(
     makeCons(syms.add, objs.builtin_add),
-    makeCons(syms.sub, objs.builtin_sub),
-    makeCons(syms.mul, objs.builtin_mul),
-    makeCons(syms.div, objs.builtin_div),
-    makeCons(syms.modulo, objs.builtin_modulo),
+    makeCons(syms.sub, make_builtin(vm, "sub", builtin_sub)),
+    makeCons(syms.mul, make_builtin(vm, "mul", builtin_mul)),
+    makeCons(syms.div, make_builtin(vm, "div", builtin_div)),
+    makeCons(syms.modulo, make_builtin(vm, "modulo", builtin_modulo)),
     makeCons(syms.Cons, objs.builtin_cons),
-    makeCons(syms.first, objs.builtin_first),
-    makeCons(syms.rest, objs.builtin_rest),
-    makeCons(syms.is_equal, objs.builtin_is_equal),
-    makeCons(syms.concat, objs.builtin_concat),
-    makeCons(syms.split, objs.builtin_split),
-    makeCons(syms.ctor, objs.builtin_constructor),
-    makeCons(syms.make_symbol, objs.builtin_make_symbol),
-    makeCons(syms.symbol_name, objs.builtin_symbol_name));
+    makeCons(syms.first, make_builtin(vm, "first", builtin_first)),
+    makeCons(syms.rest, make_builtin(vm, "rest", builtin_rest)),
+    makeCons(syms.is_equal, make_builtin(vm, "is_equal", builtin_is_equal)),
+    makeCons(syms.concat, make_builtin(vm, "concat", builtin_concat)),
+    makeCons(syms.split, make_builtin(vm, "split", builtin_split)),
+    makeCons(syms.ctor, make_builtin(vm, "constructor", builtin_constructor)),
+    makeCons(syms.make_symbol, make_builtin(vm, "make-symbol", builtin_make_symbol)),
+    makeCons(syms.symbol_name, make_builtin(vm, "symbol-name", builtin_symbol_name)));
 
   loaded_modules = makeCons(
     makeCons(syms.core, objs.builtin_load_from_core),
