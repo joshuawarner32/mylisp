@@ -45,16 +45,10 @@ public:
 struct heap_block_t;
 class EvalFrame;
 
-class Transformer;
-class PrettyPrinter;
-
 class VM {
 private:
   size_t heap_block_size;
   heap_block_t* heap;
-
-  Transformer* transformer;
-  PrettyPrinter* prettyPrinter;
 
 public:
   Value nil;

@@ -59,8 +59,6 @@ Syms::Syms(VM& vm):
 VM::VM(size_t heap_block_size):
   heap_block_size(heap_block_size),
   heap(make_heap_block(heap_block_size, 0)),
-  transformer(0),
-  prettyPrinter(0),
   nil(new(*this) Object(Object::Type::Nil)),
   true_(new (*this) Object(Object::Type::Bool)),
   false_(new (*this) Object(Object::Type::Bool)),
