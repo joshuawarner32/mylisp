@@ -60,7 +60,6 @@ public:
     Value builtin_add;
     Value builtin_cons;
     Value builtin_load_module;
-    Value builtin_load_from_core;
   } objs;
 
   Syms syms;
@@ -98,8 +97,6 @@ public:
   void print(Value value, int indent = 0, StandardStream stream = StandardStream::StdOut);
   Value transform(Value value);
   Value parse(const char* text, bool multiexpr = false);
-
-  void initBuiltinModules();
 
   Value loadModule(Value name);
   Value loadModule(Value name, Value source);

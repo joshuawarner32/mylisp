@@ -75,8 +75,6 @@ VM::VM(size_t heap_block_size):
   objs.builtin_add = make_builtin(vm, "add", builtin_add);
   objs.builtin_cons = make_builtin(vm, "cons", builtin_cons);
   objs.builtin_load_module = make_builtin(vm, "load-module", builtin_load_module);
-  objs.builtin_load_from_core = make_builtin(vm, "load-from-core", builtin_load_from_core);
-
 
   vm.core_imports = makeList(
     makeCons(syms.add, objs.builtin_add),
@@ -95,7 +93,7 @@ VM::VM(size_t heap_block_size):
     makeCons(syms.symbol_name, make_builtin(vm, "symbol-name", builtin_symbol_name)));
 
   loaded_modules = makeCons(
-    makeCons(syms.core, objs.builtin_load_from_core),
+    makeCons(syms.core, make_builtin(vm, "load-from-core", builtin_load_from_core)),
     loaded_modules);
 
   prettyPrinterImpl = nil;
