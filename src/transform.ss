@@ -140,7 +140,7 @@
     (list 'letlambdas defines inner))
 
   (define (make-export-condition name)
-    (list 'eq? 'sym-name (list 'quote name)))
+    (list eq? 'sym-name (list 'quote name)))
 
   (define (make-exports-cases exports)
     (if (nil? exports) (list 'error 'sym-name)
